@@ -56,3 +56,31 @@ y el resto del sistema sigue operativo.
 2. Storage RAID + magic numbers — **listo**
 3. RAG: extracción, chunking, embeddings, pgvector — **listo**
 4. UI + guardrails LLM + modos Local/Oráculo — **listo**
+
+## Crear / promover un admin
+
+Hay un comando dedicado, registrado como `create-admin` por
+`pyproject.toml`. También se puede invocar como módulo:
+
+```bash
+# Local (con la venv activada)
+create-admin --email admin@ies.edu.ar --full-name "Admin Principal"
+
+# O en el contenedor de producción
+docker compose exec backend python -m app.scripts.create_admin \
+    --email admin@ies.edu.ar --full-name "Admin Principal"
+```
+
+Si no se pasa `--password`, lo solicita por consola (sin eco). También
+acepta `ADMIN_EMAIL`, `ADMIN_FULL_NAME` y `ADMIN_PASSWORD` por entorno,
+útil para automatizar el primer setup:
+
+```bash
+ADMIN_EMAIL=admin@ies.edu.ar \
+ADMIN_FULL_NAME="Admin" \
+ADMIN_PASSWORD='cambia-esto' \
+docker compose exec -T backend python -m app.scripts.create_admin
+```
+
+Si el usuario ya existe, lo promueve a `admin` y lo deja activo. Para
+resetearle el password, agregá `--force-password`.
