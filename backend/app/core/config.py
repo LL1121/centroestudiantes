@@ -35,6 +35,14 @@ class Settings(BaseSettings):
 
     ocr_langs: str = "spa+eng"
 
+    # LLM (Etapa 4)
+    llm_backend: str = "fake"        # fake | openai | groq
+    llm_model: str = "gpt-4o-mini"
+    llm_temperature: float = 0.2
+    llm_max_tokens: int = 600
+    llm_top_k: int = 5
+    groq_api_key: str | None = None
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

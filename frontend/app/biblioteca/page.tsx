@@ -56,9 +56,7 @@ export default async function BibliotecaHome() {
           icon={<MessageCircle className="h-5 w-5" />}
           title="Asistente IA"
           description="RAG sobre el material indexado."
-          href="#"
-          disabled
-          tag="Etapa 4"
+          href="/biblioteca/asistente"
         />
       </div>
 

@@ -55,4 +55,4 @@ y el resto del sistema sigue operativo.
 1. Infra + Auth — **listo**
 2. Storage RAID + magic numbers — **listo**
 3. RAG: extracción, chunking, embeddings, pgvector — **listo**
-4. UI + guardrails LLM + modos Local/Oráculo
+4. UI + guardrails LLM + modos Local/Oráculo — **listo**
