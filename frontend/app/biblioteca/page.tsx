@@ -50,9 +50,7 @@ export default async function BibliotecaHome() {
           icon={<Upload className="h-5 w-5" />}
           title="Subir material"
           description="Carga validada (PDF, EPUB, JPEG, PNG)."
-          href="#"
-          disabled
-          tag="Etapa 2"
+          href="/biblioteca/subir"
         />
         <ModuleCard
           icon={<MessageCircle className="h-5 w-5" />}

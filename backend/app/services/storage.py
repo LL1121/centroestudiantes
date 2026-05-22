@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
+from fastapi import UploadFile
+
 from app.core.config import get_settings
 
 
@@ -31,11 +33,18 @@ class StorageService(Protocol):
         self, *, key: str, stream: AsyncIterator[bytes], mime_type: str
     ) -> StoredObject: ...
 
+    async def upload(
+        self, *, file: UploadFile, key: str, mime_type: str
+    ) -> StoredObject: ...
+
     async def open(self, key: str) -> AsyncIterator[bytes]: ...
 
     async def delete(self, key: str) -> None: ...
 
     def absolute_path(self, key: str) -> str: ...
+
+
+_CHUNK_SIZE = 64 * 1024
 
 
 class LocalRaidStorage:
@@ -54,6 +63,13 @@ class LocalRaidStorage:
             raise ValueError("Ruta fuera del root de storage")
         return target
 
+    def _cleanup(self, target: Path) -> None:
+        if target.exists():
+            try:
+                target.unlink()
+            except OSError:
+                pass
+
     async def save(
         self, *, key: str, stream: AsyncIterator[bytes], mime_type: str
     ) -> StoredObject:
@@ -61,14 +77,48 @@ class LocalRaidStorage:
         target.parent.mkdir(parents=True, exist_ok=True)
         sha = hashlib.sha256()
         size = 0
-        with target.open("wb") as fh:
-            async for chunk in stream:
-                if not chunk:
-                    continue
-                fh.write(chunk)
-                sha.update(chunk)
-                size += len(chunk)
+        try:
+            with target.open("wb") as fh:
+                async for chunk in stream:
+                    if not chunk:
+                        continue
+                    fh.write(chunk)
+                    sha.update(chunk)
+                    size += len(chunk)
+        except BaseException:
+            self._cleanup(target)
+            raise
         return StoredObject(key=key, size_bytes=size, sha256=sha.hexdigest(), mime_type=mime_type)
+
+    async def upload(
+        self, *, file: UploadFile, key: str, mime_type: str
+    ) -> StoredObject:
+        """
+        Persiste un `UploadFile` en `key` haciendo streaming chunked y
+        calculando sha256 en caliente. Limpia archivos parciales si algo falla.
+        """
+        target = self._resolve(key)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        sha = hashlib.sha256()
+        size = 0
+        try:
+            with target.open("wb") as fh:
+                while chunk := await file.read(_CHUNK_SIZE):
+                    fh.write(chunk)
+                    sha.update(chunk)
+                    size += len(chunk)
+        except BaseException:
+            self._cleanup(target)
+            raise
+        finally:
+            try:
+                await file.seek(0)
+            except Exception:  # noqa: BLE001
+                pass
+
+        return StoredObject(
+            key=key, size_bytes=size, sha256=sha.hexdigest(), mime_type=mime_type
+        )
 
     async def open(self, key: str) -> AsyncIterator[bytes]:
         target = self._resolve(key)
@@ -76,7 +126,7 @@ class LocalRaidStorage:
         async def _iter() -> AsyncIterator[bytes]:
             with target.open("rb") as fh:
                 while True:
-                    chunk = fh.read(64 * 1024)
+                    chunk = fh.read(_CHUNK_SIZE)
                     if not chunk:
                         break
                     yield chunk
