@@ -4,18 +4,91 @@ services:
     container_name: centro-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: centro
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-centro}
     volumes:
       - centro_pgdata:/var/lib/postgresql/data
+    networks:
+      - lyntrix_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 5s
       timeout: 3s
       retries: 10
 
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: centro-biblioteca-api:latest
+    container_name: centro-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_HOST: 0.0.0.0
+      APP_PORT: "8000"
+
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-centro}
+
+      JWT_SECRET: ${JWT_SECRET:?Definí JWT_SECRET en .env}
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+      REFRESH_TOKEN_EXPIRE_DAYS: "14"
+
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://prueba.lyntrix.com.ar}
+
+      STORAGE_BACKEND: local
+      STORAGE_ROOT: /app/var/storage
+
+      EMBEDDING_DIM: "1536"
+      EMBEDDING_BACKEND: ${EMBEDDING_BACKEND:-fake}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+
+      CHUNK_SIZE: ${CHUNK_SIZE:-1000}
+      CHUNK_OVERLAP: ${CHUNK_OVERLAP:-200}
+      OCR_LANGS: ${OCR_LANGS:-spa+eng}
+
+      LLM_BACKEND: ${LLM_BACKEND:-fake}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      LLM_TEMPERATURE: ${LLM_TEMPERATURE:-0.2}
+      LLM_MAX_TOKENS: ${LLM_MAX_TOKENS:-600}
+      LLM_TOP_K: ${LLM_TOP_K:-5}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+    volumes:
+      - centro_storage:/app/var/storage
+    networks:
+      - lyntrix_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: centro-biblioteca-web:latest
+    container_name: centro-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+      # El proxy interno apunta al servicio `backend` por la red docker.
+      BACKEND_URL: http://backend:8000
+    ports:
+      - "3005:3000"
+    networks:
+      - lyntrix_network
+
+networks:
+  lyntrix_network:
+    external: true
+
 volumes:
   centro_pgdata:
+  centro_storage:
