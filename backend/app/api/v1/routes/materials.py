@@ -3,13 +3,14 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep
 from app.models.material import Material, MaterialStatus
 from app.schemas.material import MaterialUploadResponse
 from app.services.file_validation import MIME_TO_EXT, MIME_TO_TIPO, validate_file_bytes
+from app.services.rag_processor import process_material_pipeline
 from app.services.storage import get_storage
 
 router = APIRouter(prefix="/materials", tags=["materials"])
@@ -28,6 +29,7 @@ _CARRERA_MAX = 120
 async def upload_material(
     user: CurrentUser,
     session: SessionDep,
+    background_tasks: BackgroundTasks,
     file: Annotated[UploadFile, File()],
     titulo: Annotated[str, Form(min_length=_TITULO_MIN, max_length=_TITULO_MAX)],
     carrera: Annotated[str, Form(min_length=_CARRERA_MIN, max_length=_CARRERA_MAX)],
@@ -95,4 +97,9 @@ async def upload_material(
         raise
 
     await session.refresh(material)
+
+    # Dispara el pipeline RAG (extracción → chunks → embeddings → pgvector)
+    # en background; la respuesta vuelve enseguida con el material en `pending`.
+    background_tasks.add_task(process_material_pipeline, material.id)
+
     return MaterialUploadResponse(material=material, deduplicated=False)  # type: ignore[arg-type]

@@ -26,6 +26,14 @@ class Settings(BaseSettings):
     storage_root: Path = Path("./var/storage")
 
     embedding_dim: int = 1536
+    embedding_backend: str = "fake"
+    embedding_model: str = "text-embedding-3-small"
+    openai_api_key: str | None = None
+
+    chunk_size: int = 1000
+    chunk_overlap: int = 200
+
+    ocr_langs: str = "spa+eng"
 
     @property
     def cors_origins_list(self) -> list[str]:

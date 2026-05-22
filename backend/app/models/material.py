@@ -19,7 +19,9 @@ class TipoArchivo(str, enum.Enum):
 
 class MaterialStatus(str, enum.Enum):
     pending = "pending"
-    indexed = "indexed"
+    processing = "processing"
+    active = "active"
+    indexed = "indexed"  # legado pre-Etapa3; tratar como `active`
     failed = "failed"
 
 

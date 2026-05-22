@@ -39,9 +39,20 @@ app/
 alembic/           # migraciones
 ```
 
+## Dependencias del sistema (Etapa 3)
+
+Para OCR sobre JPEG/PNG hace falta `tesseract` instalado:
+
+```bash
+sudo apt install -y tesseract-ocr tesseract-ocr-spa tesseract-ocr-eng
+```
+
+Si OCR falla porque tesseract no está, el material queda con `status='failed'`
+y el resto del sistema sigue operativo.
+
 ## Etapas
 
-1. Infra + Auth (este commit) — **listo**
-2. Storage RAID + magic numbers
-3. RAG: extracción, chunking, embeddings, pgvector
+1. Infra + Auth — **listo**
+2. Storage RAID + magic numbers — **listo**
+3. RAG: extracción, chunking, embeddings, pgvector — **listo**
 4. UI + guardrails LLM + modos Local/Oráculo
