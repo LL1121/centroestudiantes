@@ -9,7 +9,7 @@ from app.core.config import get_settings
 _settings = get_settings()
 
 engine = create_async_engine(
-    _settings.database_url,
+    _settings.resolved_database_url,
     echo=_settings.app_debug,
     pool_pre_ping=True,
 )

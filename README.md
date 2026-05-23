@@ -69,6 +69,23 @@ docker compose up -d
 Las migraciones de Alembic corren automáticamente en el `entrypoint.sh`
 del backend, así que la primera ejecución ya deja la DB lista.
 
+### 3b) Crear admin y errores de contraseña Postgres
+
+```bash
+docker compose exec backend python -m app.scripts.create_admin \
+    --email admin@ies.edu.ar --full-name "Admin"
+```
+
+Si ves `password authentication failed for user "postgres"`, el volumen de
+Postgres se inicializó con **otra** contraseña que la de tu `.env` actual.
+Sincronizá sin borrar datos:
+
+```bash
+chmod +x scripts/sync-postgres-password.sh
+./scripts/sync-postgres-password.sh
+docker compose up -d --force-recreate backend
+```
+
 ### 4) Cloudflare Tunnel
 
 Apuntá los hostnames públicos a los servicios docker. En el config de

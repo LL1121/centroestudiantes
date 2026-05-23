@@ -84,3 +84,14 @@ docker compose exec -T backend python -m app.scripts.create_admin
 
 Si el usuario ya existe, lo promueve a `admin` y lo deja activo. Para
 resetearle el password, agregá `--force-password`.
+
+### Error `InvalidPasswordError` en Docker
+
+Postgres solo fija la contraseña en el **primer** arranque del volumen. Si
+cambiaste `POSTGRES_PASSWORD` en `.env` después, ejecutá desde la raíz del
+monorepo:
+
+```bash
+./scripts/sync-postgres-password.sh
+docker compose up -d --force-recreate backend
+```

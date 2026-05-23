@@ -26,10 +26,17 @@ import sys
 from dataclasses import dataclass
 
 from sqlalchemy import select
+from sqlalchemy.engine import make_url
 
+from app.core.config import get_settings
 from app.core.security import hash_password
 from app.db.session import SessionFactory, engine
 from app.models.user import User, UserRole
+
+try:
+    import asyncpg
+except ImportError:  # pragma: no cover
+    asyncpg = None  # type: ignore[assignment]
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 MIN_PASSWORD_LEN = 8
@@ -156,12 +163,46 @@ async def _upsert_admin(data: AdminInput) -> tuple[str, User]:
         return "updated", existing
 
 
+def _print_db_target() -> None:
+    settings = get_settings()
+    url = make_url(settings.resolved_database_url)
+    print(
+        f"DB → {url.username}@{url.host}:{url.port}/{url.database} "
+        f"(env={settings.app_env})"
+    )
+
+
+def _db_password_help() -> None:
+    print(
+        "\nError: la contraseña de Postgres no coincide con POSTGRES_PASSWORD del .env.\n"
+        "\nEsto pasa si el volumen se creó con otra contraseña y después cambiaste .env.\n"
+        "\nOpciones:\n"
+        "  1) Sincronizar sin borrar datos (desde la raíz del repo):\n"
+        "       chmod +x scripts/sync-postgres-password.sh\n"
+        "       ./scripts/sync-postgres-password.sh\n"
+        "       docker compose up -d --force-recreate backend\n"
+        "\n"
+        "  2) Recrear volumen (BORRA la base):\n"
+        "       docker compose down -v && docker compose up -d\n"
+        "\n"
+        "Verificá que exista .env en la raíz con el mismo POSTGRES_PASSWORD "
+        "que usaste al levantar `db`.\n",
+        file=sys.stderr,
+    )
+
+
 async def _run(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
     data = _collect_input(args)
+    _print_db_target()
 
     try:
         action, user = await _upsert_admin(data)
+    except Exception as exc:
+        if asyncpg is not None and isinstance(exc, asyncpg.exceptions.InvalidPasswordError):
+            _db_password_help()
+            return 1
+        raise
     finally:
         await engine.dispose()
 

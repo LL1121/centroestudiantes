@@ -1,19 +1,49 @@
+from __future__ import annotations
+
+import os
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import quote_plus
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+def build_database_url(
+    *,
+    user: str,
+    password: str,
+    host: str,
+    port: int = 5432,
+    database: str,
+) -> str:
+    """URL asyncpg con password escapado (soporta caracteres especiales)."""
+    safe_password = quote_plus(password, safe="")
+    return (
+        f"postgresql+asyncpg://{user}:{safe_password}@{host}:{port}/{database}"
+    )
+
+
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     app_env: str = "development"
     app_debug: bool = True
     app_host: str = "0.0.0.0"
     app_port: int = 8000
 
-    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/centro"
+    # Conexión explícita (desarrollo local). En Docker preferí POSTGRES_*.
+    database_url: str | None = None
+
+    postgres_user: str = "postgres"
+    postgres_password: str = "postgres"
+    postgres_host: str | None = None
+    postgres_port: int = 5432
+    postgres_db: str = "centro"
 
     jwt_secret: str = Field(min_length=16)
     jwt_algorithm: str = "HS256"
@@ -42,6 +72,47 @@ class Settings(BaseSettings):
     llm_max_tokens: int = 600
     llm_top_k: int = 5
     groq_api_key: str | None = None
+
+    @model_validator(mode="after")
+    def resolve_database_url(self) -> Settings:
+        """En Docker (POSTGRES_HOST) arma la URL desde POSTGRES_*."""
+        host = self.postgres_host or os.getenv("POSTGRES_HOST")
+        if host:
+            user = os.getenv("POSTGRES_USER", self.postgres_user)
+            password = os.getenv("POSTGRES_PASSWORD", self.postgres_password)
+            database = os.getenv("POSTGRES_DB", self.postgres_db)
+            port = int(os.getenv("POSTGRES_PORT", str(self.postgres_port)))
+            object.__setattr__(
+                self,
+                "database_url",
+                build_database_url(
+                    user=user,
+                    password=password,
+                    host=host,
+                    port=port,
+                    database=database,
+                ),
+            )
+            return self
+
+        if not self.database_url:
+            object.__setattr__(
+                self,
+                "database_url",
+                build_database_url(
+                    user=self.postgres_user,
+                    password=self.postgres_password,
+                    host="localhost",
+                    port=self.postgres_port,
+                    database=self.postgres_db,
+                ),
+            )
+        return self
+
+    @property
+    def resolved_database_url(self) -> str:
+        assert self.database_url is not None
+        return self.database_url
 
     @property
     def cors_origins_list(self) -> list[str]:
