@@ -1,0 +1,6 @@
+packages:
+  - '.'
+
+# pnpm 11: scripts de dependencias requieren allowlist explícita
+allowBuilds:
+  sharp: true
