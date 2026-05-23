@@ -66,6 +66,10 @@ docker compose build
 docker compose up -d
 ```
 
+En cada `up`, el servicio `db-password-sync` alinea la contraseña del
+volumen Postgres con `POSTGRES_PASSWORD` del `.env` (evita el loop de
+reinicios del backend cuando cambiaste la pass después del primer deploy).
+
 Las migraciones de Alembic corren automáticamente en el `entrypoint.sh`
 del backend, así que la primera ejecución ya deja la DB lista.
 
@@ -76,14 +80,21 @@ docker compose exec backend python -m app.scripts.create_admin \
     --email admin@ies.edu.ar --full-name "Admin"
 ```
 
-Si ves `password authentication failed for user "postgres"`, el volumen de
-Postgres se inicializó con **otra** contraseña que la de tu `.env` actual.
-Sincronizá sin borrar datos:
+Si ves `password authentication failed for user "postgres"`:
+
+1. Verificá que el `.env` de la **raíz** (junto al `docker-compose.yml`)
+   tenga el `POSTGRES_PASSWORD` que querés usar.
+2. Volvé a levantar (el sync corre solo):
 
 ```bash
-chmod +x scripts/sync-postgres-password.sh
-./scripts/sync-postgres-password.sh
-docker compose up -d --force-recreate backend
+docker compose up -d
+```
+
+Manual (si hace falta):
+
+```bash
+docker compose run --rm db-password-sync
+docker compose up -d backend
 ```
 
 ### 4) Cloudflare Tunnel

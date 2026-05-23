@@ -19,6 +19,21 @@ services:
       timeout: 3s
       retries: 10
 
+  # En cada `docker compose up` alinea la contraseña del volumen con el .env actual
+  # (conexión local por socket → trust, sin necesitar la pass vieja).
+  db-password-sync:
+    image: pgvector/pgvector:pg16
+    depends_on:
+      db:
+        condition: service_healthy
+    network_mode: service:db
+    env_file:
+      - .env
+    volumes:
+      - ./docker/db/sync-password.sh:/sync-password.sh:ro
+    entrypoint: ["/bin/bash", "/sync-password.sh"]
+    restart: "no"
+
   backend:
     build:
       context: ./backend
@@ -29,6 +44,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      db-password-sync:
+        condition: service_completed_successfully
     env_file:
       - .env
     environment:
