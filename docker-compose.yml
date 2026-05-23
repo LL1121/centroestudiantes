@@ -3,6 +3,8 @@ services:
     image: pgvector/pgvector:pg16
     container_name: centro-postgres
     restart: unless-stopped
+    entrypoint: ["/bin/bash", "/usr/local/bin/docker-entrypoint-wrapper.sh"]
+    command: ["postgres"]
     env_file:
       - .env
     environment:
@@ -11,28 +13,21 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-centro}
     volumes:
       - centro_pgdata:/var/lib/postgresql/data
+      - ./docker/db/docker-entrypoint-wrapper.sh:/usr/local/bin/docker-entrypoint-wrapper.sh:ro
+      - ./docker/db/sync-password.sh:/usr/local/bin/sync-password.sh:ro
     networks:
       - lyntrix_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      # Espera a que el sync de contraseña haya aplicado (auth TCP con .env)
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -q && PGPASSWORD=\"$$POSTGRES_PASSWORD\" psql -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d postgres -c 'SELECT 1' >/dev/null",
+        ]
       interval: 5s
-      timeout: 3s
-      retries: 10
-
-  # En cada `docker compose up` alinea la contraseña del volumen con el .env actual
-  # (conexión local por socket → trust, sin necesitar la pass vieja).
-  db-password-sync:
-    image: pgvector/pgvector:pg16
-    depends_on:
-      db:
-        condition: service_healthy
-    network_mode: service:db
-    env_file:
-      - .env
-    volumes:
-      - ./docker/db/sync-password.sh:/sync-password.sh:ro
-    entrypoint: ["/bin/bash", "/sync-password.sh"]
-    restart: "no"
+      timeout: 5s
+      retries: 15
+      start_period: 30s
 
   backend:
     build:
@@ -44,8 +39,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      db-password-sync:
-        condition: service_completed_successfully
     env_file:
       - .env
     environment:

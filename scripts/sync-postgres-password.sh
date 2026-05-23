@@ -27,8 +27,8 @@ fi
 # Escapar comillas simples para SQL: ' → ''
 sql_password="${POSTGRES_PASSWORD//\'/\'\'}"
 
-echo "Sincronizando contraseña (servicio one-shot db-password-sync)…"
-docker compose run --rm db-password-sync
+echo "Sincronizando contraseña dentro del contenedor db…"
+docker compose exec -T db /usr/local/bin/sync-password.sh
 
-echo "OK. Levantá el backend:"
-echo "  docker compose up -d backend"
+echo "OK. Recreá el backend:"
+echo "  docker compose up -d --force-recreate backend"

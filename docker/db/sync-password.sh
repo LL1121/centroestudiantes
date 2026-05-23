@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Sincroniza la contraseña del rol Postgres con POSTGRES_PASSWORD del .env.
-# Se ejecuta vía socket local (trust) dentro del namespace de red del servicio `db`.
+# Corre dentro del contenedor `db` vía socket Unix (auth trust local).
 set -euo pipefail
 
 : "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD no está definida}"

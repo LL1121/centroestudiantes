@@ -66,9 +66,8 @@ docker compose build
 docker compose up -d
 ```
 
-En cada `up`, el servicio `db-password-sync` alinea la contraseña del
-volumen Postgres con `POSTGRES_PASSWORD` del `.env` (evita el loop de
-reinicios del backend cuando cambiaste la pass después del primer deploy).
+En cada arranque del contenedor `db`, un wrapper del entrypoint alinea la
+contraseña del volumen con `POSTGRES_PASSWORD` del `.env` (socket local).
 
 Las migraciones de Alembic corren automáticamente en el `entrypoint.sh`
 del backend, así que la primera ejecución ya deja la DB lista.
@@ -93,8 +92,8 @@ docker compose up -d
 Manual (si hace falta):
 
 ```bash
-docker compose run --rm db-password-sync
-docker compose up -d backend
+docker compose exec db /usr/local/bin/sync-password.sh
+docker compose up -d --force-recreate backend
 ```
 
 ### 4) Cloudflare Tunnel
