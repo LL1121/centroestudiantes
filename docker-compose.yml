@@ -2,6 +2,7 @@ services:
   db:
     image: pgvector/pgvector:pg16
     container_name: centro-postgres
+    hostname: centro-postgres
     restart: unless-stopped
     entrypoint: ["/bin/bash", "/usr/local/bin/docker-entrypoint-wrapper.sh"]
     command: ["postgres"]
@@ -16,7 +17,11 @@ services:
       - ./docker/db/docker-entrypoint-wrapper.sh:/usr/local/bin/docker-entrypoint-wrapper.sh:ro
       - ./docker/db/sync-password.sh:/usr/local/bin/sync-password.sh:ro
     networks:
-      - lyntrix_network
+      lyntrix_network:
+        # Alias único para evitar colisiones con otros stacks que tengan un servicio "db"
+        aliases:
+          - centro-postgres
+          - centro-db
     healthcheck:
       # Espera a que el sync de contraseña haya aplicado (auth TCP con .env)
       test:
@@ -48,7 +53,9 @@ services:
       APP_PORT: "8000"
 
       # La URL se arma en app/core/config.py desde estas variables (password escapado).
-      POSTGRES_HOST: db
+      # Usamos el container_name (único globalmente en la red) para evitar colisiones
+      # con otros stacks que también declaren un servicio "db" en lyntrix_network.
+      POSTGRES_HOST: centro-postgres
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Definí POSTGRES_PASSWORD en .env}
       POSTGRES_DB: ${POSTGRES_DB:-centro}

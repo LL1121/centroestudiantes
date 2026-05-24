@@ -36,11 +36,16 @@ App en `http://localhost:3000`, API en `http://localhost:8000/docs`.
 El stack expone tres servicios sobre la red docker externa
 `lyntrix_network` que ya usa tu instancia de `cloudflared`:
 
-| Servicio   | Hostname interno | Puerto interno | Expuesto al host |
-| ---------- | ---------------- | -------------- | ---------------- |
-| `db`       | `db`             | 5432           | no               |
-| `backend`  | `backend`        | 8000           | no               |
-| `frontend` | `frontend`       | 3000           | `3005:3000`      |
+| Servicio   | Hostname interno         | Puerto interno | Expuesto al host |
+| ---------- | ------------------------ | -------------- | ---------------- |
+| `db`       | `centro-postgres`        | 5432           | no               |
+| `backend`  | `centro-backend`         | 8000           | no               |
+| `frontend` | `centro-frontend`        | 3000           | `3005:3000`      |
+
+> Como `lyntrix_network` es **external** y compartida con otros stacks,
+> el backend **no** apunta a `db` (ese alias puede colisionar con la
+> Postgres de otro proyecto que también lo declare). Se conecta por el
+> `container_name` `centro-postgres`, que es único globalmente en la red.
 
 > El backend **no** publica puerto al host: Cloudflare Tunnel lo alcanza
 > directamente por la red docker (`http://backend:8000`).
@@ -83,11 +88,23 @@ Si ves `password authentication failed for user "postgres"`:
 
 1. Verificá que el `.env` de la **raíz** (junto al `docker-compose.yml`)
    tenga el `POSTGRES_PASSWORD` que querés usar.
-2. Volvé a levantar (el sync corre solo):
+2. Confirmá que **no estás conectándote a otra Postgres** del servidor
+   (otros stacks en `lyntrix_network`). Desde el contenedor backend:
 
-```bash
-docker compose up -d
-```
+   ```bash
+   docker compose exec backend sh -c \
+       'getent hosts centro-postgres && getent hosts db || true'
+   ```
+
+   La primera línea (alias por `container_name`) debe resolver al IP del
+   `centro-postgres`. Si `db` resuelve a otra IP, es porque otro stack
+   también registró ese alias — el backend igual usa `centro-postgres`.
+
+3. Volvé a levantar (el sync corre solo):
+
+   ```bash
+   docker compose up -d
+   ```
 
 Manual (si hace falta):
 
