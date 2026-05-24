@@ -154,8 +154,10 @@ Si eso funciona pero el dominio no, el tunnel apunta al contenedor equivocado.
 
 - **Storage**: el material subido se persiste en el volumen
   `centro_storage` montado en `/app/var/storage` dentro del backend.
-- **Cookies**: en `production` se setean con `secure=true`. Cloudflare
-  termina TLS, así que el navegador siempre ve HTTPS.
+- **Cookies**: el flag `Secure` se infiere de `X-Forwarded-Proto` (Cloudflare
+  envía `https` aunque el contenedor escuche HTTP). Si entrás por
+  `http://IP:3005` sin tunnel, definí `COOKIE_SECURE=false` en `.env` o usá
+  el dominio HTTPS del tunnel.
 - **CORS**: `CORS_ORIGINS` arranca en `https://prueba.lyntrix.com.ar`.
   El frontend igualmente usa proxies internos (route handlers de
   Next.js) → no necesita CORS para sí mismo.

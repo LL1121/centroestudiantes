@@ -8,6 +8,7 @@ import {
   COOKIE_REFRESH,
   REFRESH_MAX_AGE,
 } from '@/lib/api/config'
+import { accessCookieOptions, refreshCookieOptions } from '@/lib/api/cookies'
 import type { ApiError, TokenPair } from '@/lib/api/types'
 
 interface LoginBody {
@@ -43,20 +44,13 @@ export async function POST(request: Request) {
 
   const tokens = (await upstream.json()) as TokenPair
   const jar = await cookies()
-  const isProd = process.env.NODE_ENV === 'production'
 
   jar.set(COOKIE_ACCESS, tokens.access_token, {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: 'lax',
-    path: '/',
+    ...accessCookieOptions(request),
     maxAge: ACCESS_MAX_AGE,
   })
   jar.set(COOKIE_REFRESH, tokens.refresh_token, {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: 'lax',
-    path: '/api/auth',
+    ...refreshCookieOptions(request),
     maxAge: REFRESH_MAX_AGE,
   })
 
