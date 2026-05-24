@@ -88,7 +88,9 @@ services:
     volumes:
       - centro_storage:/app/var/storage
     networks:
-      - lyntrix_network
+      lyntrix_network:
+        aliases:
+          - centro-backend
 
   frontend:
     build:
@@ -96,6 +98,7 @@ services:
       dockerfile: Dockerfile
     image: centro-biblioteca-web:latest
     container_name: centro-frontend
+    hostname: centro-frontend
     restart: unless-stopped
     depends_on:
       - backend
@@ -103,12 +106,14 @@ services:
       NODE_ENV: production
       PORT: "3000"
       HOSTNAME: 0.0.0.0
-      # El proxy interno apunta al servicio `backend` por la red docker.
-      BACKEND_URL: http://backend:8000
+      # container_name único en lyntrix_network (evita colisión con otros "backend"/"frontend")
+      BACKEND_URL: http://centro-backend:8000
     ports:
       - "3005:3000"
     networks:
-      - lyntrix_network
+      lyntrix_network:
+        aliases:
+          - centro-frontend
 
 networks:
   lyntrix_network:

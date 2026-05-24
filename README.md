@@ -121,17 +121,28 @@ Apuntá los hostnames públicos a los servicios docker. En el config de
 ```yaml
 ingress:
   - hostname: prueba.lyntrix.com.ar
-    service: http://frontend:3000
+    service: http://centro-frontend:3000
   - hostname: api-prueba.lyntrix.com.ar
-    service: http://backend:8000
+    service: http://centro-backend:8000
   - service: http_status:404
 ```
 
 Asegurate de que el contenedor `cloudflared` esté en la misma
-`lyntrix_network` para que pueda resolver `frontend` y `backend` por DNS
-interno de docker.
+`lyntrix_network`. Usá los **container_name** (`centro-frontend`,
+`centro-backend`), no `frontend` ni `backend`: en una red compartida
+esos alias suelen colisionar con otros stacks y Cloudflare termina en
+otra app → **404 Not Found**.
 
 ### 5) Comprobaciones
+
+En el servidor (debe responder HTML, no 404):
+
+```bash
+curl -sI http://127.0.0.1:3005/ | head -3
+curl -sI http://127.0.0.1:3005/biblioteca/login | head -3
+```
+
+Si eso funciona pero el dominio no, el tunnel apunta al contenedor equivocado.
 
 - `https://prueba.lyntrix.com.ar` — landing y `/biblioteca`.
 - `https://api-prueba.lyntrix.com.ar/health` — debe responder
