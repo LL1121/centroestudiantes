@@ -16,7 +16,7 @@ export default function RegisterPage({
 }) {
   return (
     <div className="flex min-h-dvh items-center justify-center px-4 py-10">
-      <div className="w-full max-w-sm rounded-3xl border border-border bg-white p-6 shadow-xl sm:p-8">
+      <div className="w-full max-w-sm rounded-3xl border border-border bg-card p-6 shadow-xl sm:p-8">
         <div className="mb-6 flex flex-col items-center text-center">
           <Image
             src={SITE_LOGO}

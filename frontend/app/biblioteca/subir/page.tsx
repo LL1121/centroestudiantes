@@ -35,7 +35,7 @@ export default async function SubirPage() {
         </p>
       </div>
 
-      <div className="mt-6 rounded-2xl border border-border bg-white p-5 shadow-sm sm:p-7">
+      <div className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-7">
         <UploadForm />
       </div>
     </div>

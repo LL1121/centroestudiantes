@@ -16,6 +16,7 @@ class MaterialRead(BaseModel):
     descripcion: str | None
     autor: str | None
     carrera: str
+    tags: list[str] = []
     tipo_archivo: TipoArchivo
     mime_type: str
     size_bytes: int
@@ -24,6 +25,13 @@ class MaterialRead(BaseModel):
     storage_key: str
     uploader_id: UUID | None
     created_at: datetime
+
+
+class MaterialSearchRead(MaterialRead):
+    """Material con metadatos de relevancia cuando proviene de una búsqueda."""
+
+    relevance: float | None = None
+    match_kind: str | None = None
 
 
 class MaterialUploadResponse(BaseModel):

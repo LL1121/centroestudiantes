@@ -71,7 +71,7 @@ function ModuleCard({ icon, title, description, href, requiresAuth }: ModuleCard
   return (
     <Link
       href={href}
-      className="group relative flex h-full flex-col rounded-2xl border border-border bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow"
+      className="group relative flex h-full flex-col rounded-2xl border border-border bg-card p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow"
     >
       <div className="flex items-center gap-2 text-primary">
         {icon}

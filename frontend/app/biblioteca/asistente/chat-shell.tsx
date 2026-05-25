@@ -119,7 +119,7 @@ export function ChatShell({ initialMaterialId, materialTitulo }: Props) {
   }
 
   return (
-    <div className="flex flex-1 flex-col rounded-2xl border border-border bg-white shadow-sm">
+    <div className="flex flex-1 flex-col rounded-2xl border border-border bg-card shadow-sm">
       <FocusBar
         focus={focus}
         onChange={setFocus}
@@ -147,7 +147,7 @@ export function ChatShell({ initialMaterialId, materialTitulo }: Props) {
         <label htmlFor={inputId} className="sr-only">
           Escribí tu consulta
         </label>
-        <div className="flex items-end gap-2 rounded-2xl border border-border bg-white px-3 py-2 shadow-sm focus-within:border-primary">
+        <div className="flex items-end gap-2 rounded-2xl border border-border bg-card px-3 py-2 shadow-sm focus-within:border-primary">
           <textarea
             id={inputId}
             value={draft}
@@ -301,7 +301,7 @@ function AssistantBubble({ message }: AssistantBubbleProps) {
         </span>
         <div className="space-y-2">
           <div
-            className={`rounded-2xl rounded-tl-md border bg-white px-3 py-2 text-sm leading-relaxed shadow-sm ${
+            className={`rounded-2xl rounded-tl-md border bg-card px-3 py-2 text-sm leading-relaxed shadow-sm ${
               message.blocked ? 'border-destructive/30 text-navy' : 'border-border text-navy'
             }`}
           >

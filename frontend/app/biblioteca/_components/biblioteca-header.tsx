@@ -5,6 +5,7 @@ import { BookOpen } from 'lucide-react'
 import { SITE_LOGO } from '@/lib/branding'
 import type { UserRead } from '@/lib/api/types'
 
+import { ThemeToggle } from './theme-toggle'
 import { UserMenu } from './user-menu'
 
 interface Props {
@@ -13,7 +14,7 @@ interface Props {
 
 export function BibliotecaHeader({ user }: Props) {
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-white/85 backdrop-blur supports-[backdrop-filter]:bg-white/70">
+    <header className="sticky top-0 z-30 border-b border-border bg-card/85 backdrop-blur supports-[backdrop-filter]:bg-card/70">
       <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-3 px-4 sm:px-6 lg:px-8">
         <Link href="/biblioteca" className="flex items-center gap-2 text-navy">
           <Image
@@ -34,6 +35,7 @@ export function BibliotecaHeader({ user }: Props) {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
+          <ThemeToggle />
           <UserMenu user={user} />
         </div>
       </div>

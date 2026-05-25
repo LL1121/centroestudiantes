@@ -36,6 +36,7 @@ export function UploadForm() {
   const [titulo, setTitulo] = useState('')
   const [carrera, setCarrera] = useState('')
   const [descripcion, setDescripcion] = useState('')
+  const [tags, setTags] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [dragging, setDragging] = useState(false)
   const [pending, start] = useTransition()
@@ -72,6 +73,7 @@ export function UploadForm() {
     data.append('titulo', titulo.trim())
     data.append('carrera', carrera.trim())
     if (descripcion.trim()) data.append('descripcion', descripcion.trim())
+    if (tags.trim()) data.append('tags', tags.trim())
 
     start(async () => {
       const response = await fetch('/api/materials/upload', { method: 'POST', body: data })
@@ -90,6 +92,7 @@ export function UploadForm() {
       setTitulo('')
       setCarrera('')
       setDescripcion('')
+      setTags('')
       if (inputRef.current) inputRef.current.value = ''
       router.refresh()
     })
@@ -121,6 +124,13 @@ export function UploadForm() {
         as="textarea"
         placeholder="Resumen breve del contenido"
       />
+      <Field
+        label="Temas / tags (opcional)"
+        value={tags}
+        onChange={setTags}
+        disabled={pending}
+        placeholder="parcial, anatomía, 2025 — separados por coma"
+      />
 
       <div
         onDragOver={(event) => {
@@ -140,7 +150,7 @@ export function UploadForm() {
         } ${pending ? 'pointer-events-none opacity-60' : ''}`}
       >
         {file ? (
-          <div className="flex w-full items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-left shadow-sm">
+          <div className="flex w-full items-center justify-between gap-3 rounded-lg bg-card px-3 py-2 text-left shadow-sm">
             <div className="flex min-w-0 items-center gap-2">
               <FileUp className="h-4 w-4 shrink-0 text-primary" aria-hidden />
               <div className="min-w-0">
@@ -218,7 +228,7 @@ function Field({ label, value, onChange, disabled, required, placeholder, as = '
           required={required}
           placeholder={placeholder}
           rows={3}
-          className="block w-full rounded-xl border border-border bg-white px-3 py-2 text-sm text-navy outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+          className="block w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-navy outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
         />
       ) : (
         <input
@@ -228,7 +238,7 @@ function Field({ label, value, onChange, disabled, required, placeholder, as = '
           disabled={disabled}
           required={required}
           placeholder={placeholder}
-          className="block h-11 w-full rounded-xl border border-border bg-white px-3 text-sm text-navy outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+          className="block h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-navy outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
         />
       )}
     </label>

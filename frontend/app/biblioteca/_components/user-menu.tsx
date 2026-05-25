@@ -78,7 +78,7 @@ export function UserMenu({ user }: Props) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-white px-2 pr-3 text-xs font-medium text-navy transition-colors hover:border-primary/40"
+        className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-card px-2 pr-3 text-xs font-medium text-navy transition-colors hover:border-primary/40"
       >
         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
           {initials}
@@ -115,7 +115,7 @@ function Menu({ children }: { children: React.ReactNode }) {
   return (
     <div
       role="menu"
-      className="absolute right-0 mt-2 w-56 overflow-hidden rounded-2xl border border-border bg-white p-1 shadow-lg"
+      className="absolute right-0 mt-2 w-56 overflow-hidden rounded-2xl border border-border bg-card p-1 shadow-lg"
     >
       {children}
     </div>

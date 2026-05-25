@@ -8,16 +8,16 @@ export const runtime = 'nodejs'
 export async function GET(request: Request) {
   const jar = await cookies()
   const token = jar.get(COOKIE_ACCESS)?.value
-  if (!token) {
-    return NextResponse.json({ detail: 'No autenticado' }, { status: 401 })
-  }
 
   const url = new URL(request.url)
   const qs = url.searchParams.toString()
   const path = qs ? `/api/v1/materials?${qs}` : '/api/v1/materials'
 
+  const headers: HeadersInit = { Accept: 'application/json' }
+  if (token) (headers as Record<string, string>).Authorization = `Bearer ${token}`
+
   const upstream = await fetch(`${BACKEND_URL}${path}`, {
-    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    headers,
     cache: 'no-store',
   })
 

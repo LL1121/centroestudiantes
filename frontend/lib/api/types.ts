@@ -35,6 +35,7 @@ export interface MaterialRead {
   descripcion: string | null
   autor: string | null
   carrera: string
+  tags: string[]
   tipo_archivo: TipoArchivo
   mime_type: string
   size_bytes: number
@@ -44,3 +45,16 @@ export interface MaterialRead {
   uploader_id: string | null
   created_at: string
 }
+
+export interface MaterialSearchRead extends MaterialRead {
+  relevance: number | null
+  match_kind: string | null
+}
+
+export type MaterialMatchKind =
+  | 'title'
+  | 'description'
+  | 'tag'
+  | 'carrera'
+  | 'semantic'
+  | 'recent'

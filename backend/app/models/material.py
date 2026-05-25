@@ -3,8 +3,8 @@ from __future__ import annotations
 import enum
 import uuid
 
-from sqlalchemy import BigInteger, Enum as PgEnum, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy import BigInteger, Enum as PgEnum, ForeignKey, String, Text, text
+from sqlalchemy.dialects.postgresql import ARRAY, UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDMixin
@@ -32,6 +32,11 @@ class Material(Base, UUIDMixin, TimestampMixin):
     descripcion: Mapped[str | None] = mapped_column(Text, nullable=True)
     autor: Mapped[str | None] = mapped_column(String(255), nullable=True)
     carrera: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    tags: Mapped[list[str]] = mapped_column(
+        ARRAY(String(50)),
+        nullable=False,
+        server_default=text("'{}'::varchar(50)[]"),
+    )
 
     storage_key: Mapped[str] = mapped_column(String(512), unique=True, nullable=False)
     tipo_archivo: Mapped[TipoArchivo] = mapped_column(

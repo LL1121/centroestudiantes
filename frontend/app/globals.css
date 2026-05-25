@@ -47,6 +47,35 @@
   --radius: 0.75rem;
 }
 
+/* Biblioteca Digital — modo oscuro (clase .dark en ancestro) */
+.dark {
+  color-scheme: dark;
+  --background: #0b1624;
+  --foreground: #eef4fa;
+  --card: #132337;
+  --card-foreground: #eef4fa;
+  --popover: #132337;
+  --popover-foreground: #eef4fa;
+  --primary: #4da3e8;
+  --primary-foreground: #0b1624;
+  --secondary: #1a2d44;
+  --secondary-foreground: #dce6f0;
+  --muted: #1a2d44;
+  --muted-foreground: #94a8be;
+  --accent: #c6a165;
+  --accent-foreground: #0b1624;
+  --destructive: #f87171;
+  --destructive-foreground: #ffffff;
+  --border: #2a4060;
+  --input: #2a4060;
+  --ring: #4da3e8;
+  --celeste: #75aadb;
+  --celeste-light: #5a8fc8;
+  --gold: #c6a165;
+  --gold-light: #d4b88a;
+  --navy: #e8f4fc;
+}
+
 @theme inline {
   --font-sans: 'Inter', 'Inter Fallback', system-ui, sans-serif;
   --font-serif: 'Playfair Display', 'Playfair Display Fallback', Georgia, serif;
@@ -112,6 +141,18 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--navy);
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: var(--secondary);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: var(--primary);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--celeste);
 }
 
 /* Glassmorphism utility */

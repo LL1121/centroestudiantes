@@ -1,9 +1,14 @@
 import Link from 'next/link'
+import { Suspense } from 'react'
 import { ChevronLeft, MessageCircle, Upload } from 'lucide-react'
 
 import { getOptionalUser } from '@/lib/api/auth'
 import { serverFetch } from '@/lib/api/server'
-import type { MaterialRead, MaterialStatus } from '@/lib/api/types'
+import type { MaterialRead, MaterialSearchRead, UserRead } from '@/lib/api/types'
+
+import { DeleteMaterialButton } from './_components/delete-material-button'
+import { matchKindLabel, MaterialTags } from './_components/material-tags'
+import { MaterialsSearch } from './_components/materials-search'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,12 +16,63 @@ export const metadata = {
   title: 'Materiales · Biblioteca Digital',
 }
 
-async function loadMaterials(): Promise<MaterialRead[]> {
-  return await serverFetch<MaterialRead[]>('/api/v1/materials?limit=100')
+interface PageProps {
+  searchParams: Promise<{
+    q?: string
+    carrera?: string
+    tag?: string
+    tema?: string
+    semantic?: string
+  }>
 }
 
-export default async function MaterialesPage() {
-  const [materials, user] = await Promise.all([loadMaterials(), getOptionalUser()])
+function buildMaterialsPath(params: {
+  q?: string
+  carrera?: string
+  tag?: string
+  tema?: string
+  semantic?: string
+}): string {
+  const sp = new URLSearchParams()
+  sp.set('limit', '100')
+  if (params.q?.trim()) sp.set('q', params.q.trim())
+  if (params.carrera?.trim()) sp.set('carrera', params.carrera.trim())
+  const tag = (params.tag ?? params.tema)?.trim()
+  if (tag) sp.set('tag', tag)
+  if (params.semantic === '0') sp.set('semantic', 'false')
+  return `/api/v1/materials?${sp.toString()}`
+}
+
+async function loadMaterials(path: string): Promise<MaterialSearchRead[]> {
+  return await serverFetch<MaterialSearchRead[]>(path, { authenticated: false })
+}
+
+async function loadSuggestedTags(): Promise<string[]> {
+  try {
+    return await serverFetch<string[]>('/api/v1/materials/tags?limit=24', {
+      authenticated: false,
+    })
+  } catch {
+    return []
+  }
+}
+
+function canDelete(user: UserRead | null, material: MaterialRead): boolean {
+  if (!user) return false
+  if (user.role === 'admin') return true
+  return material.uploader_id === user.id
+}
+
+export default async function MaterialesPage({ searchParams }: PageProps) {
+  const sp = await searchParams
+  const path = buildMaterialsPath(sp)
+  const hasSearch = Boolean(sp.q?.trim() || sp.carrera?.trim() || sp.tag?.trim() || sp.tema?.trim())
+
+  const [materials, user, suggestedTags] = await Promise.all([
+    loadMaterials(path),
+    getOptionalUser(),
+    loadSuggestedTags(),
+  ])
   const isGuest = user === null
 
   return (
@@ -34,7 +90,7 @@ export default async function MaterialesPage() {
           <p className="text-xs uppercase tracking-wider text-muted-foreground">Biblioteca Digital</p>
           <h1 className="font-serif text-2xl font-bold text-navy sm:text-3xl">Materiales</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Apuntes, libros y guías compartidas por la comunidad.
+            Buscá por nombre, materia, tema o similitud con el contenido indexado.
           </p>
         </div>
         <Link
@@ -46,10 +102,18 @@ export default async function MaterialesPage() {
         </Link>
       </div>
 
+      <Suspense fallback={<div className="mt-6 h-40 animate-pulse rounded-2xl bg-muted/40" />}>
+        <MaterialsSearch suggestedTags={suggestedTags} />
+      </Suspense>
+
       {materials.length === 0 ? (
-        <div className="mt-8 rounded-2xl border border-dashed border-border bg-white p-10 text-center">
-          <p className="text-sm text-muted-foreground">Todavía no hay materiales en la biblioteca.</p>
-          {!isGuest && (
+        <div className="mt-8 rounded-2xl border border-dashed border-border bg-card p-10 text-center">
+          <p className="text-sm text-muted-foreground">
+            {hasSearch
+              ? 'No encontramos materiales con esos criterios.'
+              : 'Todavía no hay materiales en la biblioteca.'}
+          </p>
+          {!isGuest && !hasSearch && (
             <Link
               href="/biblioteca/subir"
               className="mt-4 inline-flex text-sm font-semibold text-primary hover:underline"
@@ -59,29 +123,63 @@ export default async function MaterialesPage() {
           )}
         </div>
       ) : (
-        <ul className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {materials.map((material) => (
-            <MaterialCard key={material.id} material={material} isGuest={isGuest} />
-          ))}
-        </ul>
+        <>
+          {hasSearch && (
+            <p className="mt-4 text-xs text-muted-foreground">
+              {materials.length} resultado{materials.length === 1 ? '' : 's'}
+            </p>
+          )}
+          <ul className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {materials.map((material) => (
+              <MaterialCard
+                key={material.id}
+                material={material}
+                isGuest={isGuest}
+                canDelete={canDelete(user, material)}
+              />
+            ))}
+          </ul>
+        </>
       )}
     </div>
   )
 }
 
-function MaterialCard({ material, isGuest }: { material: MaterialRead; isGuest: boolean }) {
+function MaterialCard({
+  material,
+  isGuest,
+  canDelete: showDelete,
+}: {
+  material: MaterialSearchRead
+  isGuest: boolean
+  canDelete: boolean
+}) {
   const ready = material.status === 'active' || material.status === 'indexed'
   const asistenteHref = `/biblioteca/asistente?material_id=${encodeURIComponent(material.id)}&titulo=${encodeURIComponent(material.titulo)}`
+  const matchLabel = matchKindLabel(material.match_kind)
 
   return (
-    <li className="flex flex-col rounded-2xl border border-border bg-white p-5 shadow-sm">
+    <li className="relative flex flex-col rounded-2xl border border-border bg-card p-5 shadow-sm">
       <div className="flex items-start justify-between gap-2">
         <h2 className="font-semibold text-navy leading-snug">{material.titulo}</h2>
-        <StatusBadge status={material.status} />
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <div className="flex items-center gap-1">
+            <StatusBadge status={material.status} />
+            {showDelete && (
+              <DeleteMaterialButton materialId={material.id} titulo={material.titulo} />
+            )}
+          </div>
+          {matchLabel && (
+            <span className="rounded-full bg-gold/15 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-gold">
+              {matchLabel}
+            </span>
+          )}
+        </div>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
         {material.carrera} · {material.tipo_archivo.toUpperCase()} · {formatBytes(material.size_bytes)}
       </p>
+      <MaterialTags tags={material.tags ?? []} />
       {material.descripcion && (
         <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{material.descripcion}</p>
       )}
@@ -103,16 +201,14 @@ function MaterialCard({ material, isGuest }: { material: MaterialRead; isGuest: 
           </Link>
         )
       ) : (
-        <p className="mt-4 text-xs text-muted-foreground">
-          {statusHint(material.status)}
-        </p>
+        <p className="mt-4 text-xs text-muted-foreground">{statusHint(material.status)}</p>
       )}
     </li>
   )
 }
 
-function StatusBadge({ status }: { status: MaterialStatus }) {
-  const styles: Record<MaterialStatus, string> = {
+function StatusBadge({ status }: { status: MaterialSearchRead['status'] }) {
+  const styles: Record<MaterialSearchRead['status'], string> = {
     pending: 'bg-gold/15 text-gold',
     processing: 'bg-primary/10 text-primary',
     active: 'bg-emerald-500/15 text-emerald-700',
@@ -128,8 +224,8 @@ function StatusBadge({ status }: { status: MaterialStatus }) {
   )
 }
 
-function statusLabel(status: MaterialStatus): string {
-  const labels: Record<MaterialStatus, string> = {
+function statusLabel(status: MaterialSearchRead['status']): string {
+  const labels: Record<MaterialSearchRead['status'], string> = {
     pending: 'Pendiente',
     processing: 'Procesando',
     active: 'Listo',
@@ -139,8 +235,8 @@ function statusLabel(status: MaterialStatus): string {
   return labels[status]
 }
 
-function statusHint(status: MaterialStatus): string {
-  const hints: Record<MaterialStatus, string> = {
+function statusHint(status: MaterialSearchRead['status']): string {
+  const hints: Record<MaterialSearchRead['status'], string> = {
     pending: 'En cola para indexado. Volvé en unos minutos.',
     processing: 'Indexando para el asistente…',
     active: '',

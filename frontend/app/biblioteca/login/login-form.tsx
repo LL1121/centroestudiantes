@@ -94,7 +94,7 @@ function Field({ label, type, autoComplete, value, onChange, disabled, required 
         onChange={(event) => onChange(event.target.value)}
         disabled={disabled}
         required={required}
-        className="block h-11 w-full rounded-xl border border-border bg-white px-3 text-sm text-navy outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+        className="block h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-navy outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
       />
     </label>
   )
