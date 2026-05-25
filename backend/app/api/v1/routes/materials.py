@@ -8,7 +8,7 @@ from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep
 from app.models.material import Material, MaterialStatus
-from app.schemas.material import MaterialUploadResponse
+from app.schemas.material import MaterialRead, MaterialUploadResponse
 from app.services.file_validation import MIME_TO_EXT, MIME_TO_TIPO, validate_file_bytes
 from app.services.rag_processor import process_material_pipeline
 from app.services.storage import get_storage
