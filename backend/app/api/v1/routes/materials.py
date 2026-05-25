@@ -1,9 +1,23 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import AsyncIterator
+from pathlib import Path as FsPath
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Path, Query, UploadFile, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    File,
+    Form,
+    HTTPException,
+    Path,
+    Query,
+    Request,
+    UploadFile,
+    status,
+)
+from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import select, text
 
 from app.api.deps import CurrentUser, OptionalCurrentUser, SessionDep
@@ -177,6 +191,95 @@ async def upload_material(
     background_tasks.add_task(process_material_pipeline, material.id)
 
     return MaterialUploadResponse(material=material, deduplicated=False)  # type: ignore[arg-type]
+
+
+_FILE_CHUNK = 64 * 1024
+
+
+def _parse_range(header: str | None, total: int) -> tuple[int, int] | None:
+    """Devuelve (start, end-inclusive) o None si no hay/es invalido."""
+    if not header or not header.startswith("bytes="):
+        return None
+    try:
+        spec = header[len("bytes="):].split(",", 1)[0].strip()
+        start_s, end_s = spec.split("-", 1)
+        if start_s == "" and end_s:
+            length = int(end_s)
+            if length <= 0:
+                return None
+            start = max(0, total - length)
+            return start, total - 1
+        start = int(start_s)
+        end = int(end_s) if end_s else total - 1
+        if start < 0 or end < start or start >= total:
+            return None
+        return start, min(end, total - 1)
+    except (ValueError, IndexError):
+        return None
+
+
+async def _iter_file_range(file_path: str, start: int, end: int) -> AsyncIterator[bytes]:
+    """Streamea un rango [start, end] inclusive del archivo."""
+    remaining = end - start + 1
+    with open(file_path, "rb") as fh:
+        fh.seek(start)
+        while remaining > 0:
+            chunk = fh.read(min(_FILE_CHUNK, remaining))
+            if not chunk:
+                break
+            remaining -= len(chunk)
+            yield chunk
+
+
+@router.get("/{material_id}/file")
+async def stream_material_file(
+    _user: OptionalCurrentUser,
+    session: SessionDep,
+    request: Request,
+    material_id: Annotated[uuid.UUID, Path()],
+) -> Response:
+    """
+    Sirve el binario del material para que lo consuma el visor del frontend.
+    Acceso público (guest OK), igual que la lectura del catálogo. Soporta
+    `Range:` requests (PDF.js los necesita para PDFs grandes).
+    """
+    material = await session.get(Material, material_id)
+    if material is None or material.status == MaterialStatus.failed:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Material no disponible.")
+
+    storage = get_storage()
+    abs_path = storage.absolute_path(material.storage_key)
+    fs_path = FsPath(abs_path)
+    if not fs_path.exists():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Archivo no encontrado en storage.")
+
+    total = fs_path.stat().st_size
+    headers = {
+        "Accept-Ranges": "bytes",
+        "Content-Disposition": f'inline; filename="{material.titulo}.{material.tipo_archivo.value}"',
+        "Cache-Control": "private, max-age=300",
+    }
+
+    range_header = request.headers.get("range") or request.headers.get("Range")
+    parsed = _parse_range(range_header, total)
+    if parsed is None:
+        return StreamingResponse(
+            _iter_file_range(abs_path, 0, total - 1),
+            media_type=material.mime_type,
+            headers={**headers, "Content-Length": str(total)},
+        )
+    start, end = parsed
+    length = end - start + 1
+    return StreamingResponse(
+        _iter_file_range(abs_path, start, end),
+        status_code=status.HTTP_206_PARTIAL_CONTENT,
+        media_type=material.mime_type,
+        headers={
+            **headers,
+            "Content-Range": f"bytes {start}-{end}/{total}",
+            "Content-Length": str(length),
+        },
+    )
 
 
 @router.delete("/{material_id}", status_code=status.HTTP_204_NO_CONTENT)

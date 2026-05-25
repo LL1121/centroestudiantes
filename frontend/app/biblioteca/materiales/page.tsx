@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Suspense } from 'react'
-import { ChevronLeft, MessageCircle, Upload } from 'lucide-react'
+import { BookOpen, ChevronLeft, MessageCircle, Upload } from 'lucide-react'
 
 import { getOptionalUser } from '@/lib/api/auth'
 import { serverFetch } from '@/lib/api/server'
@@ -187,19 +187,26 @@ function MaterialCard({
         Subido {formatDate(material.created_at)}
       </p>
       {ready ? (
-        isGuest ? (
-          <p className="mt-4 text-xs text-muted-foreground">
-            Iniciá sesión para consultarlo con el asistente IA.
-          </p>
-        ) : (
+        <div className="mt-4 flex flex-wrap items-center gap-3 text-xs">
           <Link
-            href={asistenteHref}
-            className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+            href={`/biblioteca/materiales/${material.id}/leer`}
+            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            <MessageCircle className="h-3.5 w-3.5" aria-hidden />
-            Consultar con el asistente
+            <BookOpen className="h-3.5 w-3.5" aria-hidden />
+            Leer en línea
           </Link>
-        )
+          {isGuest ? (
+            <span className="text-muted-foreground">Ingresá para usar el asistente IA</span>
+          ) : (
+            <Link
+              href={asistenteHref}
+              className="inline-flex items-center gap-1.5 font-semibold text-primary hover:underline"
+            >
+              <MessageCircle className="h-3.5 w-3.5" aria-hidden />
+              Consultar con el asistente
+            </Link>
+          )}
+        </div>
       ) : (
         <p className="mt-4 text-xs text-muted-foreground">{statusHint(material.status)}</p>
       )}
