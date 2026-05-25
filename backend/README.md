@@ -85,6 +85,36 @@ docker compose exec -T backend python -m app.scripts.create_admin
 Si el usuario ya existe, lo promueve a `admin` y lo deja activo. Para
 resetearle el password, agregá `--force-password`.
 
+## Crear un usuario común (alumno / moderador)
+
+Para usuarios que no son admin existe `create-user`:
+
+```bash
+# Por defecto crea con rol `alumno`
+docker compose exec backend python -m app.scripts.create_user \
+    --email juan@ies.edu.ar --full-name "Juan Pérez"
+
+# Moderador
+docker compose exec backend python -m app.scripts.create_user \
+    --email mod@ies.edu.ar --full-name "Mod" --role moderador
+
+# Sin prompt (CI / scripts)
+USER_EMAIL=juan@ies.edu.ar \
+USER_FULL_NAME="Juan Pérez" \
+USER_PASSWORD='cambia-esto' \
+docker compose exec -T backend python -m app.scripts.create_user
+```
+
+A diferencia de `create-admin`, si el usuario ya existe **no** lo modifica
+salvo que pases:
+
+- `--force-password` → resetea la contraseña.
+- `--allow-role-update` → actualiza rol y reactiva la cuenta si estaba
+  desactivada.
+
+Para promover a `admin` usá siempre `create-admin` (jamás se asigna ese
+rol desde `create-user`).
+
 ### Error `InvalidPasswordError` en Docker
 
 Postgres solo fija la contraseña en el **primer** arranque del volumen. Si
