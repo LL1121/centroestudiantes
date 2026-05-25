@@ -1,13 +1,22 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 
+import { getOptionalUser } from '@/lib/api/auth'
+
 import { UploadForm } from './upload-form'
+
+export const dynamic = 'force-dynamic'
 
 export const metadata = {
   title: 'Subir material · Biblioteca Digital',
 }
 
-export default function SubirPage() {
+export default async function SubirPage() {
+  const user = await getOptionalUser()
+  if (!user) {
+    redirect('/biblioteca/login?redirect=/biblioteca/subir')
+  }
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 lg:px-8">
       <Link

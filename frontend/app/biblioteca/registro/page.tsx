@@ -2,13 +2,14 @@ import Image from 'next/image'
 import Link from 'next/link'
 
 import { SITE_LOGO } from '@/lib/branding'
-import { LoginForm } from './login-form'
+
+import { RegisterForm } from './register-form'
 
 export const metadata = {
-  title: 'Ingresar · Biblioteca Digital',
+  title: 'Crear cuenta · Biblioteca Digital',
 }
 
-export default function LoginPage({
+export default function RegisterPage({
   searchParams,
 }: {
   searchParams: Promise<{ redirect?: string }>
@@ -26,17 +27,19 @@ export default function LoginPage({
             priority
           />
           <h1 className="mt-3 font-serif text-xl font-bold text-navy sm:text-2xl">
-            Biblioteca Digital
+            Crear cuenta
           </h1>
-          <p className="text-xs text-muted-foreground">Ingresá con tu cuenta del Centro</p>
+          <p className="text-xs text-muted-foreground">
+            Tu cuenta queda con rol <span className="font-medium">alumno</span>.
+          </p>
         </div>
 
-        <LoginForm searchParamsPromise={searchParams} />
+        <RegisterForm searchParamsPromise={searchParams} />
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          ¿Todavía no tenés cuenta?{' '}
-          <Link href="/biblioteca/registro" className="font-medium text-primary hover:underline">
-            Creá una
+          ¿Ya tenés cuenta?{' '}
+          <Link href="/biblioteca/login" className="font-medium text-primary hover:underline">
+            Iniciá sesión
           </Link>
         </p>
         <p className="mt-2 text-center text-xs text-muted-foreground">

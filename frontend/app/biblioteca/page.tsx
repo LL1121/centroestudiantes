@@ -1,60 +1,52 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
 import { BookOpen, MessageCircle, Upload } from 'lucide-react'
 
-import { ApiRequestError, serverFetch } from '@/lib/api/server'
-import type { UserRead } from '@/lib/api/types'
-import { LogoutButton } from './_components/logout-button'
+import { getOptionalUser } from '@/lib/api/auth'
 
 export const dynamic = 'force-dynamic'
 
-async function loadUser(): Promise<UserRead> {
-  try {
-    return await serverFetch<UserRead>('/api/v1/users/me')
-  } catch (error) {
-    if (error instanceof ApiRequestError && error.status === 401) {
-      redirect('/biblioteca/login')
-    }
-    throw error
-  }
-}
-
 export default async function BibliotecaHome() {
-  const user = await loadUser()
+  const user = await getOptionalUser()
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">Biblioteca Digital</p>
-          <h1 className="font-serif text-2xl font-bold text-navy sm:text-3xl">
-            Hola, {user.full_name.split(' ')[0]}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Acceso autenticado · Rol: <span className="font-medium text-primary">{user.role}</span>
-          </p>
-        </div>
-        <LogoutButton />
+      <div className="flex flex-col gap-2">
+        <p className="text-xs uppercase tracking-wider text-muted-foreground">Biblioteca Digital</p>
+        <h1 className="font-serif text-2xl font-bold text-navy sm:text-3xl">
+          {user ? `Hola, ${user.full_name.split(' ')[0]}` : 'Biblioteca abierta'}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {user ? (
+            <>
+              Acceso autenticado · Rol:{' '}
+              <span className="font-medium text-primary">{user.role}</span>
+            </>
+          ) : (
+            'Explorá el catálogo y leé apuntes sin necesidad de iniciar sesión. Para subir o usar el asistente IA, creá una cuenta.'
+          )}
+        </p>
       </div>
 
       <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <ModuleCard
           icon={<BookOpen className="h-5 w-5" />}
           title="Materiales"
-          description="Apuntes, libros y guías compartidas."
+          description="Apuntes, libros y guías compartidas. Lectura libre."
           href="/biblioteca/materiales"
         />
         <ModuleCard
           icon={<Upload className="h-5 w-5" />}
           title="Subir material"
           description="Carga validada (PDF, EPUB, JPEG, PNG)."
-          href="/biblioteca/subir"
+          href={user ? '/biblioteca/subir' : '/biblioteca/login?redirect=/biblioteca/subir'}
+          requiresAuth={!user}
         />
         <ModuleCard
           icon={<MessageCircle className="h-5 w-5" />}
           title="Asistente IA"
           description="RAG sobre el material indexado."
-          href="/biblioteca/asistente"
+          href={user ? '/biblioteca/asistente' : '/biblioteca/login?redirect=/biblioteca/asistente'}
+          requiresAuth={!user}
         />
       </div>
 
@@ -72,39 +64,25 @@ interface ModuleCardProps {
   title: string
   description: string
   href: string
-  disabled?: boolean
-  tag?: string
+  requiresAuth?: boolean
 }
 
-function ModuleCard({ icon, title, description, href, disabled, tag }: ModuleCardProps) {
-  const className =
-    'group relative flex h-full flex-col rounded-2xl border border-border bg-white p-5 shadow-sm transition-all duration-200'
-  const content = (
-    <>
+function ModuleCard({ icon, title, description, href, requiresAuth }: ModuleCardProps) {
+  return (
+    <Link
+      href={href}
+      className="group relative flex h-full flex-col rounded-2xl border border-border bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow"
+    >
       <div className="flex items-center gap-2 text-primary">
         {icon}
         <span className="font-semibold text-navy">{title}</span>
       </div>
       <p className="mt-2 text-sm text-muted-foreground">{description}</p>
-      {tag && (
-        <span className="mt-4 inline-flex w-fit items-center rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-medium text-gold">
-          {tag}
+      {requiresAuth && (
+        <span className="mt-4 inline-flex w-fit items-center rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Requiere ingresar
         </span>
       )}
-    </>
-  )
-
-  if (disabled) {
-    return (
-      <div className={`${className} cursor-not-allowed opacity-70`} aria-disabled>
-        {content}
-      </div>
-    )
-  }
-
-  return (
-    <Link href={href} className={`${className} hover:-translate-y-0.5 hover:border-primary/40 hover:shadow`}>
-      {content}
     </Link>
   )
 }

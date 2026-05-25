@@ -6,7 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy import select
 
-from app.api.deps import CurrentUser, SessionDep
+from app.api.deps import CurrentUser, OptionalCurrentUser, SessionDep
 from app.models.material import Material, MaterialStatus
 from app.schemas.material import MaterialRead, MaterialUploadResponse
 from app.services.file_validation import MIME_TO_EXT, MIME_TO_TIPO, validate_file_bytes
@@ -25,12 +25,12 @@ _CARRERA_MAX = 120
 
 @router.get("", response_model=list[MaterialRead])
 async def list_materials(
-    _user: CurrentUser,
+    _user: OptionalCurrentUser,
     session: SessionDep,
     carrera: Annotated[str | None, Query(max_length=_CARRERA_MAX)] = None,
     limit: Annotated[int, Query(ge=1, le=_LIST_LIMIT_MAX)] = 50,
 ) -> list[MaterialRead]:
-    """Lista materiales subidos, más recientes primero."""
+    """Lista materiales subidos, más recientes primero. Acceso público (guest OK)."""
     stmt = select(Material).order_by(Material.created_at.desc()).limit(limit)
     if carrera:
         stmt = stmt.where(Material.carrera == carrera.strip())

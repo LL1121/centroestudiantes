@@ -1,8 +1,8 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
 import { ChevronLeft, MessageCircle, Upload } from 'lucide-react'
 
-import { ApiRequestError, serverFetch } from '@/lib/api/server'
+import { getOptionalUser } from '@/lib/api/auth'
+import { serverFetch } from '@/lib/api/server'
 import type { MaterialRead, MaterialStatus } from '@/lib/api/types'
 
 export const dynamic = 'force-dynamic'
@@ -12,18 +12,12 @@ export const metadata = {
 }
 
 async function loadMaterials(): Promise<MaterialRead[]> {
-  try {
-    return await serverFetch<MaterialRead[]>('/api/v1/materials?limit=100')
-  } catch (error) {
-    if (error instanceof ApiRequestError && error.status === 401) {
-      redirect('/biblioteca/login?redirect=/biblioteca/materiales')
-    }
-    throw error
-  }
+  return await serverFetch<MaterialRead[]>('/api/v1/materials?limit=100')
 }
 
 export default async function MaterialesPage() {
-  const materials = await loadMaterials()
+  const [materials, user] = await Promise.all([loadMaterials(), getOptionalUser()])
+  const isGuest = user === null
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
@@ -44,28 +38,30 @@ export default async function MaterialesPage() {
           </p>
         </div>
         <Link
-          href="/biblioteca/subir"
+          href={isGuest ? '/biblioteca/login?redirect=/biblioteca/subir' : '/biblioteca/subir'}
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
         >
           <Upload className="h-4 w-4" aria-hidden />
-          Subir material
+          {isGuest ? 'Ingresar para subir' : 'Subir material'}
         </Link>
       </div>
 
       {materials.length === 0 ? (
         <div className="mt-8 rounded-2xl border border-dashed border-border bg-white p-10 text-center">
           <p className="text-sm text-muted-foreground">Todavía no hay materiales en la biblioteca.</p>
-          <Link
-            href="/biblioteca/subir"
-            className="mt-4 inline-flex text-sm font-semibold text-primary hover:underline"
-          >
-            Sé el primero en subir uno
-          </Link>
+          {!isGuest && (
+            <Link
+              href="/biblioteca/subir"
+              className="mt-4 inline-flex text-sm font-semibold text-primary hover:underline"
+            >
+              Sé el primero en subir uno
+            </Link>
+          )}
         </div>
       ) : (
         <ul className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
           {materials.map((material) => (
-            <MaterialCard key={material.id} material={material} />
+            <MaterialCard key={material.id} material={material} isGuest={isGuest} />
           ))}
         </ul>
       )}
@@ -73,7 +69,7 @@ export default async function MaterialesPage() {
   )
 }
 
-function MaterialCard({ material }: { material: MaterialRead }) {
+function MaterialCard({ material, isGuest }: { material: MaterialRead; isGuest: boolean }) {
   const ready = material.status === 'active' || material.status === 'indexed'
   const asistenteHref = `/biblioteca/asistente?material_id=${encodeURIComponent(material.id)}&titulo=${encodeURIComponent(material.titulo)}`
 
@@ -93,13 +89,19 @@ function MaterialCard({ material }: { material: MaterialRead }) {
         Subido {formatDate(material.created_at)}
       </p>
       {ready ? (
-        <Link
-          href={asistenteHref}
-          className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
-        >
-          <MessageCircle className="h-3.5 w-3.5" aria-hidden />
-          Consultar con el asistente
-        </Link>
+        isGuest ? (
+          <p className="mt-4 text-xs text-muted-foreground">
+            Iniciá sesión para consultarlo con el asistente IA.
+          </p>
+        ) : (
+          <Link
+            href={asistenteHref}
+            className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+          >
+            <MessageCircle className="h-3.5 w-3.5" aria-hidden />
+            Consultar con el asistente
+          </Link>
+        )
       ) : (
         <p className="mt-4 text-xs text-muted-foreground">
           {statusHint(material.status)}

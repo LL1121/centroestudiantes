@@ -38,6 +38,30 @@ async def get_current_user(
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
+async def get_optional_current_user(
+    session: SessionDep,
+    authorization: Annotated[str | None, Header()] = None,
+) -> User | None:
+    """Igual que `get_current_user`, pero devuelve None si no hay token válido."""
+    if not authorization or not authorization.lower().startswith("bearer "):
+        return None
+    token = authorization.split(" ", 1)[1].strip()
+    try:
+        payload = decode_token(token, expected_type="access")
+    except jwt.InvalidTokenError:
+        return None
+    try:
+        user = await session.get(User, UUID(payload["sub"]))
+    except (ValueError, KeyError):
+        return None
+    if user is None or not user.is_active:
+        return None
+    return user
+
+
+OptionalCurrentUser = Annotated["User | None", Depends(get_optional_current_user)]
+
+
 def require_role(*allowed: UserRole):
     async def _checker(user: CurrentUser) -> User:
         if user.role not in allowed:
@@ -47,4 +71,12 @@ def require_role(*allowed: UserRole):
     return _checker
 
 
-__all__ = ["CurrentUser", "SessionDep", "get_current_user", "require_role", "select"]
+__all__ = [
+    "CurrentUser",
+    "OptionalCurrentUser",
+    "SessionDep",
+    "get_current_user",
+    "get_optional_current_user",
+    "require_role",
+    "select",
+]

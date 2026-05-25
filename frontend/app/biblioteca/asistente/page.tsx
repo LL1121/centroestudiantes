@@ -1,7 +1,12 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 
+import { getOptionalUser } from '@/lib/api/auth'
+
 import { ChatShell } from './chat-shell'
+
+export const dynamic = 'force-dynamic'
 
 export const metadata = {
   title: 'Asistente IA · Biblioteca Digital',
@@ -12,6 +17,10 @@ interface PageProps {
 }
 
 export default async function AsistentePage({ searchParams }: PageProps) {
+  const user = await getOptionalUser()
+  if (!user) {
+    redirect('/biblioteca/login?redirect=/biblioteca/asistente')
+  }
   const params = await searchParams
   const materialId = params.material_id?.trim() || null
   const materialTitulo = params.titulo?.trim() || null
