@@ -42,9 +42,7 @@ export default async function BibliotecaHome() {
           icon={<BookOpen className="h-5 w-5" />}
           title="Materiales"
           description="Apuntes, libros y guías compartidas."
-          href="#"
-          disabled
-          tag="Etapa 2"
+          href="/biblioteca/materiales"
         />
         <ModuleCard
           icon={<Upload className="h-5 w-5" />}

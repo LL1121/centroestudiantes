@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy import select
 
 from app.api.deps import CurrentUser, SessionDep
@@ -15,10 +15,27 @@ from app.services.storage import get_storage
 
 router = APIRouter(prefix="/materials", tags=["materials"])
 
+_LIST_LIMIT_MAX = 100
+
 _TITULO_MIN = 2
 _TITULO_MAX = 255
 _CARRERA_MIN = 2
 _CARRERA_MAX = 120
+
+
+@router.get("", response_model=list[MaterialRead])
+async def list_materials(
+    _user: CurrentUser,
+    session: SessionDep,
+    carrera: Annotated[str | None, Query(max_length=_CARRERA_MAX)] = None,
+    limit: Annotated[int, Query(ge=1, le=_LIST_LIMIT_MAX)] = 50,
+) -> list[MaterialRead]:
+    """Lista materiales subidos, más recientes primero."""
+    stmt = select(Material).order_by(Material.created_at.desc()).limit(limit)
+    if carrera:
+        stmt = stmt.where(Material.carrera == carrera.strip())
+    rows = (await session.scalars(stmt)).all()
+    return [MaterialRead.model_validate(row) for row in rows]
 
 
 @router.post(

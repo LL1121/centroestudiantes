@@ -19,3 +19,28 @@ export interface TokenPair {
 export interface ApiError {
   detail: string
 }
+
+export type MaterialStatus =
+  | 'pending'
+  | 'processing'
+  | 'active'
+  | 'indexed'
+  | 'failed'
+
+export type TipoArchivo = 'pdf' | 'epub' | 'jpeg' | 'png'
+
+export interface MaterialRead {
+  id: string
+  titulo: string
+  descripcion: string | null
+  autor: string | null
+  carrera: string
+  tipo_archivo: TipoArchivo
+  mime_type: string
+  size_bytes: number
+  sha256: string
+  status: MaterialStatus
+  storage_key: string
+  uploader_id: string | null
+  created_at: string
+}
