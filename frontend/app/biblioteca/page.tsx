@@ -9,7 +9,7 @@ export default async function BibliotecaHome() {
   const user = await getOptionalUser()
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-5xl px-3 py-8 sm:px-6 sm:py-10 lg:px-8">
       <div className="flex flex-col gap-2">
         <p className="text-xs uppercase tracking-wider text-muted-foreground">Biblioteca Digital</p>
         <h1 className="font-serif text-2xl font-bold text-navy sm:text-3xl">
@@ -71,7 +71,7 @@ function ModuleCard({ icon, title, description, href, requiresAuth }: ModuleCard
   return (
     <Link
       href={href}
-      className="group relative flex h-full flex-col rounded-2xl border border-border bg-card p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow"
+      className="group relative flex h-full flex-col rounded-2xl border border-border bg-card p-5 shadow-sm transition-all duration-200 active:scale-[0.99] hover:-translate-y-0.5 hover:border-primary/40 hover:shadow"
     >
       <div className="flex items-center gap-2 text-primary">
         {icon}

@@ -40,7 +40,7 @@ export function DeleteMaterialButton({ materialId, titulo }: Props) {
       <button
         type="button"
         onClick={() => setConfirming(true)}
-        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
         aria-label={`Eliminar ${titulo}`}
         title="Eliminar"
       >
@@ -58,12 +58,12 @@ export function DeleteMaterialButton({ materialId, titulo }: Props) {
             <p className="mt-1 text-xs text-muted-foreground">
               Vas a borrar <span className="font-medium text-navy">{titulo}</span>. Esta acción es definitiva y también elimina sus embeddings del asistente IA.
             </p>
-            <div className="mt-3 flex gap-2">
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
               <button
                 type="button"
                 onClick={onDelete}
                 disabled={pending}
-                className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-destructive px-3 text-xs font-semibold text-white transition-colors hover:bg-destructive/90 disabled:opacity-50"
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg bg-destructive px-3 text-sm font-semibold text-white transition-colors hover:bg-destructive/90 disabled:opacity-50 sm:text-xs"
               >
                 {pending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -76,7 +76,7 @@ export function DeleteMaterialButton({ materialId, titulo }: Props) {
                 type="button"
                 onClick={() => setConfirming(false)}
                 disabled={pending}
-                className="inline-flex h-9 flex-1 items-center justify-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-navy transition-colors hover:border-primary/40 disabled:opacity-50"
+                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg border border-border bg-card px-3 text-sm font-medium text-navy transition-colors hover:border-primary/40 disabled:opacity-50 sm:text-xs"
               >
                 Cancelar
               </button>

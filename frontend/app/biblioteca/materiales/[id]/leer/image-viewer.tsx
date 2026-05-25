@@ -19,8 +19,8 @@ export function ImageViewer({ fileUrl, titulo }: Props) {
   const zoomOut = () => setScale((s) => Math.max(MIN, +(s - STEP).toFixed(2)))
 
   return (
-    <section className="mt-4 flex flex-1 flex-col gap-3 rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4">
-      <div className="flex items-center justify-between gap-2">
+    <section className="mt-3 flex min-h-0 flex-1 flex-col gap-3 rounded-2xl border border-border bg-card p-3 shadow-sm sm:mt-4 sm:p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1">
           <ToolbarButton onClick={zoomOut} aria-label="Reducir">
             <ZoomOut className="h-4 w-4" />
@@ -35,7 +35,7 @@ export function ImageViewer({ fileUrl, titulo }: Props) {
         <a
           href={fileUrl}
           download
-          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-3 text-xs font-medium text-navy transition-colors hover:border-primary/40"
+          className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 text-xs font-medium text-navy transition-colors hover:border-primary/40 sm:ml-auto sm:h-8 sm:w-auto"
         >
           <Download className="h-3.5 w-3.5" />
           Descargar
@@ -64,7 +64,7 @@ function ToolbarButton({
     <button
       type="button"
       {...props}
-      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background text-navy transition-colors hover:border-primary/40 disabled:opacity-50"
+      className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-background text-navy transition-colors hover:border-primary/40 disabled:opacity-50 sm:h-8 sm:w-8"
     >
       {children}
     </button>

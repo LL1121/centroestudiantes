@@ -72,7 +72,7 @@ export function MaterialsSearch({ suggestedTags }: Props) {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Buscar por nombre, materia o tema…"
-            className="block h-11 w-full rounded-xl border border-border bg-background pl-10 pr-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+            className="block h-11 w-full rounded-xl border border-border bg-background pl-10 pr-3 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary sm:text-sm"
           />
         </label>
         <button
@@ -136,7 +136,7 @@ export function MaterialsSearch({ suggestedTags }: Props) {
                 setTag(t)
                 applySearch({ tag: t })
               }}
-              className="rounded-full border border-border bg-secondary/50 px-2.5 py-0.5 text-[11px] font-medium text-navy transition-colors hover:border-primary/40 hover:bg-primary/10"
+              className="min-h-9 rounded-full border border-border bg-secondary/50 px-3 py-1.5 text-[11px] font-medium text-navy transition-colors hover:border-primary/40 hover:bg-primary/10"
             >
               {t}
             </button>
@@ -170,4 +170,4 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 const inputClass =
-  'block h-10 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary'
+  'block h-11 w-full rounded-xl border border-border bg-background px-3 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary sm:h-10 sm:text-sm'

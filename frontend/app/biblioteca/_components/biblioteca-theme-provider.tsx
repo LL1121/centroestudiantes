@@ -67,6 +67,7 @@ export function BibliotecaThemeProvider({ children }: { children: ReactNode }) {
         className={cn(
           'min-h-dvh bg-secondary/30 text-foreground transition-colors duration-200',
           theme === 'dark' && 'dark',
+          'overflow-x-hidden',
         )}
       >
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />

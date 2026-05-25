@@ -76,7 +76,7 @@ export default async function MaterialesPage({ searchParams }: PageProps) {
   const isGuest = user === null
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-5xl px-3 py-8 sm:px-6 sm:py-10 lg:px-8">
       <Link
         href="/biblioteca"
         className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
@@ -95,7 +95,7 @@ export default async function MaterialesPage({ searchParams }: PageProps) {
         </div>
         <Link
           href={isGuest ? '/biblioteca/login?redirect=/biblioteca/subir' : '/biblioteca/subir'}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto sm:py-2.5"
         >
           <Upload className="h-4 w-4" aria-hidden />
           {isGuest ? 'Ingresar para subir' : 'Subir material'}
@@ -187,22 +187,24 @@ function MaterialCard({
         Subido {formatDate(material.created_at)}
       </p>
       {ready ? (
-        <div className="mt-4 flex flex-wrap items-center gap-3 text-xs">
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
           <Link
             href={`/biblioteca/materiales/${material.id}/leer`}
-            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto sm:rounded-full sm:px-3 sm:py-1.5 sm:text-xs"
           >
-            <BookOpen className="h-3.5 w-3.5" aria-hidden />
+            <BookOpen className="h-4 w-4 sm:h-3.5 sm:w-3.5" aria-hidden />
             Leer en línea
           </Link>
           {isGuest ? (
-            <span className="text-muted-foreground">Ingresá para usar el asistente IA</span>
+            <span className="text-center text-xs text-muted-foreground sm:text-left">
+              Ingresá para usar el asistente IA
+            </span>
           ) : (
             <Link
               href={asistenteHref}
-              className="inline-flex items-center gap-1.5 font-semibold text-primary hover:underline"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/5 sm:w-auto sm:border-0 sm:px-0 sm:py-0 sm:text-xs sm:hover:bg-transparent sm:hover:underline"
             >
-              <MessageCircle className="h-3.5 w-3.5" aria-hidden />
+              <MessageCircle className="h-4 w-4 sm:h-3.5 sm:w-3.5" aria-hidden />
               Consultar con el asistente
             </Link>
           )}
