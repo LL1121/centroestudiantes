@@ -1,6 +1,8 @@
 packages:
   - '.'
 
-# pnpm 11: scripts de dependencias requieren allowlist explícita
+# pnpm 11: scripts de dependencias requieren allowlist explícita (true = ejecutar, false = omitir)
 allowBuilds:
+  core-js: false
+  es5-ext: false
   sharp: true
