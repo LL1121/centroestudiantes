@@ -4,6 +4,7 @@ import { BookOpen, FileImage, FileText, Loader2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import type { TipoArchivo } from '@/lib/api/types'
+import { configurePdfWorkerOn, pdfDocumentOptions } from '@/lib/pdf-worker'
 
 interface Props {
   materialId: string
@@ -126,7 +127,7 @@ function PdfThumbnail({ fileUrl }: { fileUrl: string }) {
       await import('react-pdf/dist/Page/AnnotationLayer.css')
       await import('react-pdf/dist/Page/TextLayer.css')
       if (cancelled) return
-      mod.pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${mod.pdfjs.version}/pdf.worker.min.mjs`
+      configurePdfWorkerOn(mod.pdfjs)
       setPdfPieces(mod)
     })()
     return () => {
@@ -159,7 +160,7 @@ function PdfThumbnail({ fileUrl }: { fileUrl: string }) {
           onLoadError={() => setErrored(true)}
           onSourceError={() => setErrored(true)}
           externalLinkTarget="_blank"
-          options={pdfOptions(PdfPieces.pdfjs.version)}
+          options={pdfDocumentOptions()}
         >
           <PdfPieces.Page
             pageNumber={1}
@@ -173,13 +174,6 @@ function PdfThumbnail({ fileUrl }: { fileUrl: string }) {
       )}
     </div>
   )
-}
-
-function pdfOptions(version: string) {
-  return {
-    cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${version}/cmaps/`,
-    cMapPacked: true,
-  }
 }
 
 function FallbackTile({ label }: { label: string }) {

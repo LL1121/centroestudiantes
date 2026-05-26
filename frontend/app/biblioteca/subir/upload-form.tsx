@@ -95,6 +95,7 @@ export function UploadForm() {
       setDescripcion('')
       setTags('')
       if (inputRef.current) inputRef.current.value = ''
+      router.push('/biblioteca/materiales')
       router.refresh()
     })
   }

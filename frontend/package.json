@@ -5,9 +5,10 @@
   "packageManager": "pnpm@11.2.2",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/copy-pdf-worker.mjs && next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "postinstall": "node scripts/copy-pdf-worker.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

@@ -15,9 +15,9 @@ import { Document, Page, pdfjs } from 'react-pdf'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
 
-// Worker servido por CDN; usa la misma versión que la lib del paquete.
-// Se evita configurar Webpack/Turbopack para resolver el .mjs y mantener el deploy simple.
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`
+import { configurePdfWorker, pdfDocumentOptions } from '@/lib/pdf-worker'
+
+configurePdfWorker()
 
 interface Props {
   fileUrl: string
@@ -192,7 +192,7 @@ export function PdfViewer({ fileUrl, titulo }: Props) {
               </div>
             }
             externalLinkTarget="_blank"
-            options={{ cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/cmaps/`, cMapPacked: true }}
+            options={pdfDocumentOptions()}
           >
             <Page
               pageNumber={pageNumber}

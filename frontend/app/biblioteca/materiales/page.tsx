@@ -8,6 +8,7 @@ import type { MaterialRead, MaterialSearchRead, UserRead } from '@/lib/api/types
 
 import { BibliotecaHero } from './_components/biblioteca-hero'
 import { DeleteMaterialButton } from './_components/delete-material-button'
+import { MaterialsAutoRefresh } from './_components/materials-auto-refresh'
 import { matchKindLabel, MaterialTags } from './_components/material-tags'
 import { MaterialThumbnail } from './_components/material-thumbnail'
 import { MaterialsSearch } from './_components/materials-search'
@@ -78,9 +79,13 @@ export default async function MaterialesPage({ searchParams }: PageProps) {
   ])
   const isGuest = user === null
   const heroSource = allMaterials ?? materials
+  const hasProcessing = materials.some(
+    (m) => m.status === 'pending' || m.status === 'processing',
+  )
 
   return (
     <div className="mx-auto max-w-6xl px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <MaterialsAutoRefresh active={hasProcessing} />
       <BibliotecaHero materials={heroSource} totalTags={suggestedTags.length} user={user} />
 
       <div className="mt-6 sm:mt-8">
