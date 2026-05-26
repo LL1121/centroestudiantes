@@ -10,10 +10,26 @@ para no bloquear el event loop.
 from __future__ import annotations
 
 import logging
+import re
 from datetime import UTC, datetime
 from uuid import UUID
 
 import asyncio
+
+
+_CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+
+def _sanitize_text(text: str) -> str:
+    """Elimina NUL bytes (0x00) y caracteres de control no imprimibles.
+
+    PostgreSQL rechaza 0x00 en columnas TEXT/VARCHAR aunque el resto del
+    texto sea UTF-8 válido. Tampoco aporta nada conservar otros control chars
+    de los PDFs (ligaduras raras, caracteres de formato, etc.).
+    """
+    if not text:
+        return ""
+    return _CONTROL_CHARS_RE.sub("", text).replace("\x00", "")
 
 from app.core.config import get_settings
 from app.db.session import SessionFactory
@@ -48,7 +64,7 @@ async def extract_text_from_storage(storage_key: str, mime_type: str) -> str:
     else:
         raise ValueError(f"mime_type no soportado por el extractor: {mime_type}")
 
-    text = text.strip()
+    text = _sanitize_text(text).strip()
     if not text:
         raise ValueError("El extractor no obtuvo texto del archivo.")
     return text
@@ -127,7 +143,7 @@ def chunk_text(text: str, chunk_size: int = 1000, chunk_overlap: int = 200) -> l
                 end = start + soft_break + 1
                 chunk = text[start:end]
 
-        chunk = chunk.strip()
+        chunk = _sanitize_text(chunk).strip()
         if chunk:
             chunks.append(chunk)
 

@@ -83,10 +83,11 @@ export function UploadForm() {
         return
       }
       const json = (await response.json()) as UploadResponse
+      const tituloFinal = json.material.titulo || titulo.trim() || 'Material'
       toast.success(
         json.deduplicated
-          ? 'Ese material ya existía en la biblioteca: lo enlazamos sin duplicar.'
-          : '¡Material subido! Quedó pendiente de indexado.',
+          ? `Ya existía "${tituloFinal}" en la biblioteca.`
+          : `"${tituloFinal}" subido con éxito`,
       )
       setFile(null)
       setTitulo('')

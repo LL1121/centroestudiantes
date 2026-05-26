@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BookOpen, Home, LogIn, Upload } from 'lucide-react'
+import { BookOpen, LogIn, Upload } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
@@ -12,12 +12,12 @@ interface Props {
 
 const items = (isGuest: boolean) =>
   [
-    { href: '/biblioteca', label: 'Inicio', icon: Home, match: (p: string) => p === '/biblioteca' },
     {
       href: '/biblioteca/materiales',
-      label: 'Materiales',
+      label: 'Catálogo',
       icon: BookOpen,
-      match: (p: string) => p.startsWith('/biblioteca/materiales'),
+      match: (p: string) =>
+        p === '/biblioteca' || p === '/biblioteca/materiales' || p.startsWith('/biblioteca/materiales'),
     },
     isGuest
       ? {
@@ -54,7 +54,7 @@ export function BibliotecaMobileNav({ isGuest }: Props) {
       )}
       style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
     >
-      <ul className="mx-auto flex max-w-lg items-stretch justify-around px-2 pt-2">
+      <ul className="mx-auto flex max-w-sm items-stretch justify-around gap-2 px-3 pt-2">
         {navItems.map(({ href, label, icon: Icon, match }) => {
           const active = match(pathname)
           return (

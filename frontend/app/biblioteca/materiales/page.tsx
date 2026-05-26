@@ -1,13 +1,15 @@
 import Link from 'next/link'
 import { Suspense } from 'react'
-import { BookOpen, ChevronLeft, MessageCircle, Upload } from 'lucide-react'
+import { BookOpen, MessageCircle, Sparkles } from 'lucide-react'
 
 import { getOptionalUser } from '@/lib/api/auth'
 import { serverFetch } from '@/lib/api/server'
 import type { MaterialRead, MaterialSearchRead, UserRead } from '@/lib/api/types'
 
+import { BibliotecaHero } from './_components/biblioteca-hero'
 import { DeleteMaterialButton } from './_components/delete-material-button'
 import { matchKindLabel, MaterialTags } from './_components/material-tags'
+import { MaterialThumbnail } from './_components/material-thumbnail'
 import { MaterialsSearch } from './_components/materials-search'
 
 export const dynamic = 'force-dynamic'
@@ -68,68 +70,38 @@ export default async function MaterialesPage({ searchParams }: PageProps) {
   const path = buildMaterialsPath(sp)
   const hasSearch = Boolean(sp.q?.trim() || sp.carrera?.trim() || sp.tag?.trim() || sp.tema?.trim())
 
-  const [materials, user, suggestedTags] = await Promise.all([
+  const [materials, allMaterials, user, suggestedTags] = await Promise.all([
     loadMaterials(path),
+    hasSearch ? loadMaterials('/api/v1/materials?limit=100&semantic=false') : Promise.resolve(null),
     getOptionalUser(),
     loadSuggestedTags(),
   ])
   const isGuest = user === null
+  const heroSource = allMaterials ?? materials
 
   return (
-    <div className="mx-auto max-w-5xl px-3 py-8 sm:px-6 sm:py-10 lg:px-8">
-      <Link
-        href="/biblioteca"
-        className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
-      >
-        <ChevronLeft className="h-4 w-4" aria-hidden />
-        Volver
-      </Link>
+    <div className="mx-auto max-w-6xl px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <BibliotecaHero materials={heroSource} totalTags={suggestedTags.length} user={user} />
 
-      <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">Biblioteca Digital</p>
-          <h1 className="font-serif text-2xl font-bold text-navy sm:text-3xl">Materiales</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Buscá por nombre, materia, tema o similitud con el contenido indexado.
-          </p>
-        </div>
-        <Link
-          href={isGuest ? '/biblioteca/login?redirect=/biblioteca/subir' : '/biblioteca/subir'}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto sm:py-2.5"
-        >
-          <Upload className="h-4 w-4" aria-hidden />
-          {isGuest ? 'Ingresar para subir' : 'Subir material'}
-        </Link>
+      <div className="mt-6 sm:mt-8">
+        <Suspense fallback={<div className="h-40 animate-pulse rounded-2xl bg-muted/40" />}>
+          <MaterialsSearch suggestedTags={suggestedTags} />
+        </Suspense>
       </div>
 
-      <Suspense fallback={<div className="mt-6 h-40 animate-pulse rounded-2xl bg-muted/40" />}>
-        <MaterialsSearch suggestedTags={suggestedTags} />
-      </Suspense>
-
       {materials.length === 0 ? (
-        <div className="mt-8 rounded-2xl border border-dashed border-border bg-card p-10 text-center">
-          <p className="text-sm text-muted-foreground">
-            {hasSearch
-              ? 'No encontramos materiales con esos criterios.'
-              : 'Todavía no hay materiales en la biblioteca.'}
-          </p>
-          {!isGuest && !hasSearch && (
-            <Link
-              href="/biblioteca/subir"
-              className="mt-4 inline-flex text-sm font-semibold text-primary hover:underline"
-            >
-              Sé el primero en subir uno
-            </Link>
-          )}
-        </div>
+        <EmptyState hasSearch={hasSearch} isGuest={isGuest} />
       ) : (
         <>
-          {hasSearch && (
-            <p className="mt-4 text-xs text-muted-foreground">
-              {materials.length} resultado{materials.length === 1 ? '' : 's'}
+          <div className="mt-6 flex items-center justify-between gap-3">
+            <h2 className="font-serif text-lg font-bold text-navy sm:text-xl">
+              {hasSearch ? 'Resultados' : 'Catálogo'}
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              {materials.length} {materials.length === 1 ? 'material' : 'materiales'}
             </p>
-          )}
-          <ul className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          </div>
+          <ul className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {materials.map((material) => (
               <MaterialCard
                 key={material.id}
@@ -140,6 +112,32 @@ export default async function MaterialesPage({ searchParams }: PageProps) {
             ))}
           </ul>
         </>
+      )}
+    </div>
+  )
+}
+
+function EmptyState({ hasSearch, isGuest }: { hasSearch: boolean; isGuest: boolean }) {
+  return (
+    <div className="mt-8 overflow-hidden rounded-2xl border border-dashed border-border bg-gradient-to-br from-secondary/40 to-card p-10 text-center">
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+        <BookOpen className="h-7 w-7 text-primary" aria-hidden />
+      </div>
+      <p className="mt-4 text-base font-semibold text-navy">
+        {hasSearch ? 'Sin resultados' : 'Todavía no hay materiales'}
+      </p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        {hasSearch
+          ? 'Probá con otras palabras o limpiá los filtros.'
+          : 'Sé el primero en compartir un apunte con la comunidad.'}
+      </p>
+      {!isGuest && !hasSearch && (
+        <Link
+          href="/biblioteca/subir"
+          className="mt-5 inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+        >
+          Subir el primer material
+        </Link>
       )}
     </div>
   )
@@ -159,74 +157,89 @@ function MaterialCard({
   const matchLabel = matchKindLabel(material.match_kind)
 
   return (
-    <li className="relative flex flex-col rounded-2xl border border-border bg-card p-5 shadow-sm">
-      <div className="flex items-start justify-between gap-2">
-        <h2 className="font-semibold text-navy leading-snug">{material.titulo}</h2>
-        <div className="flex shrink-0 flex-col items-end gap-1">
-          <div className="flex items-center gap-1">
-            <StatusBadge status={material.status} />
-            {showDelete && (
-              <DeleteMaterialButton materialId={material.id} titulo={material.titulo} />
-            )}
-          </div>
+    <li className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
+      <div className="relative p-3 pb-0">
+        <MaterialThumbnail
+          materialId={material.id}
+          tipo={material.tipo_archivo}
+          titulo={material.titulo}
+          ready={ready}
+        />
+        <div className="absolute right-4 top-4 flex flex-col items-end gap-1">
+          <StatusBadge status={material.status} />
           {matchLabel && (
-            <span className="rounded-full bg-gold/15 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-gold">
+            <span className="rounded-full bg-gold/90 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white shadow-sm">
               {matchLabel}
             </span>
           )}
         </div>
+        {showDelete && (
+          <div className="absolute left-4 top-4">
+            <DeleteMaterialButton materialId={material.id} titulo={material.titulo} />
+          </div>
+        )}
       </div>
-      <p className="mt-1 text-xs text-muted-foreground">
-        {material.carrera} · {material.tipo_archivo.toUpperCase()} · {formatBytes(material.size_bytes)}
-      </p>
-      <MaterialTags tags={material.tags ?? []} />
-      {material.descripcion && (
-        <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{material.descripcion}</p>
-      )}
-      <p className="mt-3 text-[10px] text-muted-foreground">
-        Subido {formatDate(material.created_at)}
-      </p>
-      {ready ? (
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-          <Link
-            href={`/biblioteca/materiales/${material.id}/leer`}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto sm:rounded-full sm:px-3 sm:py-1.5 sm:text-xs"
-          >
-            <BookOpen className="h-4 w-4 sm:h-3.5 sm:w-3.5" aria-hidden />
-            Leer en línea
-          </Link>
-          {isGuest ? (
-            <span className="text-center text-xs text-muted-foreground sm:text-left">
-              Ingresá para usar el asistente IA
-            </span>
-          ) : (
-            <Link
-              href={asistenteHref}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/5 sm:w-auto sm:border-0 sm:px-0 sm:py-0 sm:text-xs sm:hover:bg-transparent sm:hover:underline"
-            >
-              <MessageCircle className="h-4 w-4 sm:h-3.5 sm:w-3.5" aria-hidden />
-              Consultar con el asistente
-            </Link>
-          )}
+
+      <div className="flex flex-1 flex-col gap-2 p-4">
+        <div>
+          <h3 className="line-clamp-2 font-serif text-base font-bold leading-snug text-navy">
+            {material.titulo}
+          </h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {material.carrera} · {material.tipo_archivo.toUpperCase()} · {formatBytes(material.size_bytes)}
+          </p>
         </div>
-      ) : (
-        <p className="mt-4 text-xs text-muted-foreground">{statusHint(material.status)}</p>
-      )}
+
+        {material.descripcion && (
+          <p className="line-clamp-2 text-sm text-muted-foreground">{material.descripcion}</p>
+        )}
+
+        <MaterialTags tags={material.tags ?? []} />
+
+        <div className="mt-auto flex flex-col gap-2 pt-2">
+          {ready ? (
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+              <Link
+                href={`/biblioteca/materiales/${material.id}/leer`}
+                className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                <BookOpen className="h-4 w-4" aria-hidden />
+                Leer
+              </Link>
+              {!isGuest && (
+                <Link
+                  href={asistenteHref}
+                  className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/5"
+                  aria-label="Consultar con el asistente"
+                  title="Consultar con el asistente"
+                >
+                  <MessageCircle className="h-4 w-4" aria-hidden />
+                  <span className="sm:hidden">Asistente IA</span>
+                  <Sparkles className="hidden h-3.5 w-3.5 text-gold sm:inline" aria-hidden />
+                </Link>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">{statusHint(material.status)}</p>
+          )}
+          <p className="text-[10px] text-muted-foreground">Subido {formatDate(material.created_at)}</p>
+        </div>
+      </div>
     </li>
   )
 }
 
 function StatusBadge({ status }: { status: MaterialSearchRead['status'] }) {
   const styles: Record<MaterialSearchRead['status'], string> = {
-    pending: 'bg-gold/15 text-gold',
-    processing: 'bg-primary/10 text-primary',
-    active: 'bg-emerald-500/15 text-emerald-700',
-    indexed: 'bg-emerald-500/15 text-emerald-700',
-    failed: 'bg-destructive/10 text-destructive',
+    pending: 'bg-primary/90 text-white',
+    processing: 'bg-primary/90 text-white',
+    active: 'bg-emerald-600/90 text-white',
+    indexed: 'bg-emerald-600/90 text-white',
+    failed: 'bg-destructive/90 text-white',
   }
   return (
     <span
-      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${styles[status]}`}
+      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide shadow-sm backdrop-blur ${styles[status]}`}
     >
       {statusLabel(status)}
     </span>
@@ -235,7 +248,7 @@ function StatusBadge({ status }: { status: MaterialSearchRead['status'] }) {
 
 function statusLabel(status: MaterialSearchRead['status']): string {
   const labels: Record<MaterialSearchRead['status'], string> = {
-    pending: 'Pendiente',
+    pending: 'Procesando',
     processing: 'Procesando',
     active: 'Listo',
     indexed: 'Listo',
@@ -246,8 +259,8 @@ function statusLabel(status: MaterialSearchRead['status']): string {
 
 function statusHint(status: MaterialSearchRead['status']): string {
   const hints: Record<MaterialSearchRead['status'], string> = {
-    pending: 'En cola para indexado. Volvé en unos minutos.',
-    processing: 'Indexando para el asistente…',
+    pending: 'Procesando archivo…',
+    processing: 'Procesando archivo…',
     active: '',
     indexed: '',
     failed: 'No se pudo procesar este archivo.',
