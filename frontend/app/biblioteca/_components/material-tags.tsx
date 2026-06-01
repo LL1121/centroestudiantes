@@ -42,6 +42,8 @@ export function matchKindLabel(kind: string | null | undefined): string | null {
     tag: 'Tema',
     carrera: 'Materia',
     semantic: 'Similitud',
+    fuzzy: 'Aproximado',
+    similar: 'Similar',
     recent: null,
   }
   return labels[kind] ?? kind

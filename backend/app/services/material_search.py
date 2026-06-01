@@ -6,6 +6,7 @@ from uuid import UUID
 from sqlalchemy import func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.models.embedding import Embedding
 from app.models.material import Material, MaterialStatus
 from app.services.embeddings import get_embedding_client
@@ -17,7 +18,7 @@ _FAILED = (MaterialStatus.failed,)
 class MaterialSearchHit:
     material: Material
     relevance: float
-    match_kind: str  # title | description | tag | carrera | semantic | recent
+    match_kind: str  # title | description | tag | carrera | semantic | fuzzy | recent
 
 
 def _escape_like(value: str) -> str:
@@ -39,6 +40,7 @@ async def search_materials(
     Combina resultados de texto y vector, ordenados por relevancia descendente.
     """
     limit = max(1, min(limit, 100))
+    settings = get_settings()
     hits: dict[UUID, MaterialSearchHit] = {}
 
     def _upsert(material: Material, relevance: float, kind: str) -> None:
@@ -98,6 +100,23 @@ async def search_materials(
                 _upsert(row, 0.68, "carrera")
             else:
                 _upsert(row, 0.6, "description")
+
+        if len(query) >= 3:
+            threshold = settings.fuzzy_threshold
+            sim_titulo = func.similarity(Material.titulo, query)
+            sim_desc = func.similarity(func.coalesce(Material.descripcion, ""), query)
+            sim_carrera = func.similarity(Material.carrera, query)
+            score_expr = func.greatest(sim_titulo, sim_desc, sim_carrera).label("fuzzy_score")
+            fuzzy_stmt = (
+                select(Material, score_expr)
+                .where(Material.status.not_in(_FAILED))
+                .where(score_expr > threshold)
+                .order_by(score_expr.desc())
+                .limit(limit)
+            )
+            fuzzy_rows = (await session.execute(fuzzy_stmt)).all()
+            for material, score in fuzzy_rows:
+                _upsert(material, min(0.88, float(score)), "fuzzy")
 
         if semantic and len(query) >= 3:
             client = get_embedding_client()

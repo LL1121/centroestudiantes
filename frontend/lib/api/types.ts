@@ -34,6 +34,10 @@ export interface MaterialRead {
   titulo: string
   descripcion: string | null
   autor: string | null
+  anio_publicacion: number | null
+  editorial: string | null
+  isbn: string | null
+  ciudad_publicacion: string | null
   carrera: string
   tags: string[]
   tipo_archivo: TipoArchivo
@@ -57,4 +61,12 @@ export type MaterialMatchKind =
   | 'tag'
   | 'carrera'
   | 'semantic'
+  | 'fuzzy'
+  | 'similar'
   | 'recent'
+
+export interface MaterialCitationRead {
+  citation_apa: string
+  source: 'manual' | 'llm' | 'mixed' | 'fake' | string
+  missing_fields: string[]
+}

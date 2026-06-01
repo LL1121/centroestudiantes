@@ -23,9 +23,17 @@ from sqlalchemy import select, text
 from app.api.deps import CurrentUser, OptionalCurrentUser, SessionDep
 from app.models.material import Material, MaterialStatus
 from app.models.user import UserRole
-from app.schemas.material import MaterialRead, MaterialSearchRead, MaterialUploadResponse
+from app.schemas.material import (
+    MaterialBibliographyUpdate,
+    MaterialCitationRead,
+    MaterialRead,
+    MaterialSearchRead,
+    MaterialUploadResponse,
+)
+from app.services.citation import build_citation
 from app.services.file_validation import MIME_TO_EXT, MIME_TO_TIPO, validate_file_bytes
 from app.services.material_search import search_materials
+from app.services.material_similar import find_similar_materials
 from app.services.rag_processor import process_material_pipeline
 from app.services.storage import get_storage
 from app.services.tags import parse_tags
@@ -38,6 +46,31 @@ _TITULO_MIN = 2
 _TITULO_MAX = 255
 _CARRERA_MIN = 2
 _CARRERA_MAX = 120
+_AUTOR_MAX = 255
+_EDITORIAL_MAX = 255
+_ISBN_MAX = 32
+_CIUDAD_MAX = 120
+
+
+def _to_search_read(hit) -> MaterialSearchRead:  # noqa: ANN001
+    base = MaterialRead.model_validate(hit.material)
+    return MaterialSearchRead(
+        **base.model_dump(),
+        relevance=hit.relevance if hit.relevance > 0 else None,
+        match_kind=hit.match_kind if hit.match_kind != "recent" else None,
+    )
+
+
+def _parse_optional_int(value: str | None, field: str) -> int | None:
+    if value is None or not str(value).strip():
+        return None
+    try:
+        return int(str(value).strip())
+    except ValueError as exc:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"{field} debe ser un número entero.",
+        ) from exc
 
 
 @router.get("/tags", response_model=list[str])
@@ -96,15 +129,81 @@ async def list_materials(
     )
     out: list[MaterialSearchRead] = []
     for hit in hits:
-        base = MaterialRead.model_validate(hit.material)
-        out.append(
-            MaterialSearchRead(
-                **base.model_dump(),
-                relevance=hit.relevance if hit.relevance > 0 else None,
-                match_kind=hit.match_kind if hit.match_kind != "recent" else None,
-            )
-        )
+        out.append(_to_search_read(hit))
     return out
+
+
+@router.get("/{material_id}", response_model=MaterialRead)
+async def get_material(
+    _user: OptionalCurrentUser,
+    session: SessionDep,
+    material_id: Annotated[uuid.UUID, Path()],
+) -> MaterialRead:
+    """Metadata de un material. Acceso público (guest OK)."""
+    material = await session.get(Material, material_id)
+    if material is None or material.status == MaterialStatus.failed:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Material no encontrado.")
+    return MaterialRead.model_validate(material)
+
+
+@router.get("/{material_id}/similar", response_model=list[MaterialSearchRead])
+async def list_similar_materials(
+    _user: OptionalCurrentUser,
+    session: SessionDep,
+    material_id: Annotated[uuid.UUID, Path()],
+    limit: Annotated[int, Query(ge=1, le=20)] = 6,
+) -> list[MaterialSearchRead]:
+    """Materiales similares por contenido indexado (embeddings)."""
+    material = await session.get(Material, material_id)
+    if material is None or material.status == MaterialStatus.failed:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Material no encontrado.")
+    hits = await find_similar_materials(session, material_id, limit=limit)
+    return [_to_search_read(h) for h in hits]
+
+
+@router.get("/{material_id}/citation", response_model=MaterialCitationRead)
+async def get_material_citation(
+    _user: OptionalCurrentUser,
+    session: SessionDep,
+    material_id: Annotated[uuid.UUID, Path()],
+) -> MaterialCitationRead:
+    """Genera cita APA 7; completa metadata faltante con LLM si hace falta."""
+    material = await session.get(Material, material_id)
+    if material is None or material.status == MaterialStatus.failed:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Material no encontrado.")
+    try:
+        result = await build_citation(session, material_id)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
+    return MaterialCitationRead(
+        citation_apa=result.citation_apa,
+        source=result.source,
+        missing_fields=result.missing_fields,
+    )
+
+
+@router.patch("/{material_id}", response_model=MaterialRead)
+async def update_material_bibliography(
+    user: CurrentUser,
+    session: SessionDep,
+    material_id: Annotated[uuid.UUID, Path()],
+    payload: MaterialBibliographyUpdate,
+) -> MaterialRead:
+    """Actualiza metadata bibliográfica (uploader o admin)."""
+    material = await session.get(Material, material_id)
+    if material is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Material no encontrado.")
+    is_owner = material.uploader_id is not None and material.uploader_id == user.id
+    is_admin = user.role == UserRole.admin
+    if not (is_owner or is_admin):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "No podés editar este material.")
+
+    data = payload.model_dump(exclude_unset=True)
+    for key, value in data.items():
+        setattr(material, key, value)
+    await session.commit()
+    await session.refresh(material)
+    return MaterialRead.model_validate(material)
 
 
 @router.post(
@@ -121,6 +220,11 @@ async def upload_material(
     carrera: Annotated[str, Form(min_length=_CARRERA_MIN, max_length=_CARRERA_MAX)],
     descripcion: Annotated[str | None, Form(max_length=2000)] = None,
     tags: Annotated[str | None, Form(max_length=500, description="Tags separados por coma")] = None,
+    autor: Annotated[str | None, Form(max_length=_AUTOR_MAX)] = None,
+    anio_publicacion: Annotated[str | None, Form(max_length=4)] = None,
+    editorial: Annotated[str | None, Form(max_length=_EDITORIAL_MAX)] = None,
+    isbn: Annotated[str | None, Form(max_length=_ISBN_MAX)] = None,
+    ciudad_publicacion: Annotated[str | None, Form(max_length=_CIUDAD_MAX)] = None,
 ) -> MaterialUploadResponse:
     """
     Sube un material académico. Flujo estricto:
@@ -166,6 +270,13 @@ async def upload_material(
         id=material_id,
         titulo=titulo,
         descripcion=descripcion,
+        autor=autor.strip() if autor and autor.strip() else None,
+        anio_publicacion=_parse_optional_int(anio_publicacion, "anio_publicacion"),
+        editorial=editorial.strip() if editorial and editorial.strip() else None,
+        isbn=isbn.strip() if isbn and isbn.strip() else None,
+        ciudad_publicacion=ciudad_publicacion.strip()
+        if ciudad_publicacion and ciudad_publicacion.strip()
+        else None,
         carrera=carrera,
         tags=parse_tags(tags),
         storage_key=stored.key,

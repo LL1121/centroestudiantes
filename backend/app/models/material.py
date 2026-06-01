@@ -31,6 +31,10 @@ class Material(Base, UUIDMixin, TimestampMixin):
     titulo: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     descripcion: Mapped[str | None] = mapped_column(Text, nullable=True)
     autor: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    anio_publicacion: Mapped[int | None] = mapped_column(nullable=True)
+    editorial: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    isbn: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    ciudad_publicacion: Mapped[str | None] = mapped_column(String(120), nullable=True)
     carrera: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
     tags: Mapped[list[str]] = mapped_column(
         ARRAY(String(50)),

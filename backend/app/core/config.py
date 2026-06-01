@@ -64,6 +64,10 @@ class Settings(BaseSettings):
     chunk_overlap: int = 200
 
     ocr_langs: str = "spa+eng"
+    ocr_max_pages: int = 50
+    ocr_min_native_chars: int = 200
+    ocr_dpi: int = 200
+    fuzzy_threshold: float = 0.2
 
     # LLM (Etapa 4)
     llm_backend: str = "fake"        # fake | openai | groq

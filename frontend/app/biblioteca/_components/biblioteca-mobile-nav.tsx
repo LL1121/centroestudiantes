@@ -13,11 +13,11 @@ interface Props {
 const items = (isGuest: boolean) =>
   [
     {
-      href: '/biblioteca/materiales',
+      href: '/biblioteca',
       label: 'Catálogo',
       icon: BookOpen,
       match: (p: string) =>
-        p === '/biblioteca' || p === '/biblioteca/materiales' || p.startsWith('/biblioteca/materiales'),
+        p === '/biblioteca' || p.startsWith('/biblioteca/materiales'),
     },
     isGuest
       ? {

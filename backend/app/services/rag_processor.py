@@ -70,18 +70,58 @@ async def extract_text_from_storage(storage_key: str, mime_type: str) -> str:
     return text
 
 
-def _extract_pdf(path: str) -> str:
+def _extract_pdf_native(path: str, *, max_pages: int | None = None) -> str:
     from pypdf import PdfReader
 
     reader = PdfReader(path)
     pages: list[str] = []
-    for page in reader.pages:
+    for i, page in enumerate(reader.pages):
+        if max_pages is not None and i >= max_pages:
+            break
         try:
             pages.append(page.extract_text() or "")
         except Exception as exc:  # noqa: BLE001
             logger.warning("pypdf falló en una página de %s: %s", path, exc)
             continue
     return "\n\n".join(pages)
+
+
+def _extract_pdf_ocr(path: str) -> str:
+    import pytesseract
+    from pdf2image import convert_from_path
+
+    settings = get_settings()
+    images = convert_from_path(
+        path,
+        dpi=settings.ocr_dpi,
+        first_page=1,
+        last_page=settings.ocr_max_pages,
+    )
+    parts: list[str] = []
+    for image in images:
+        parts.append(pytesseract.image_to_string(image, lang=settings.ocr_langs))
+    return "\n\n".join(parts)
+
+
+def _extract_pdf(path: str) -> str:
+    settings = get_settings()
+    native = _extract_pdf_native(path)
+    if len(_sanitize_text(native).strip()) >= settings.ocr_min_native_chars:
+        return native
+    logger.info("PDF sin texto nativo suficiente, aplicando OCR: %s", path)
+    return _extract_pdf_ocr(path)
+
+
+def extract_preview_text(path: str, mime_type: str, *, max_pages: int = 3) -> str:
+    """Primeras páginas/capítulos para extracción de metadata (citas APA)."""
+    if mime_type == "application/pdf":
+        return _sanitize_text(_extract_pdf_native(path, max_pages=max_pages)).strip()
+    if mime_type == "application/epub+zip":
+        text = _extract_epub(path)
+        return _sanitize_text(text[:8000]).strip()
+    if mime_type in ("image/jpeg", "image/png"):
+        return _sanitize_text(_extract_ocr(path)).strip()
+    return ""
 
 
 def _extract_epub(path: str) -> str:

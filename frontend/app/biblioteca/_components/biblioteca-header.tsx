@@ -29,7 +29,7 @@ export function BibliotecaHeader({ user }: Props) {
         </Link>
 
         <Link
-          href="/biblioteca/materiales"
+          href="/biblioteca"
           className="ml-1 inline-flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-primary md:hidden"
           aria-label="Materiales"
         >
@@ -37,7 +37,7 @@ export function BibliotecaHeader({ user }: Props) {
         </Link>
 
         <nav className="ml-2 hidden items-center gap-1 text-sm text-muted-foreground md:flex">
-          <NavLink href="/biblioteca/materiales" icon={<BookOpen className="h-4 w-4" />}>
+          <NavLink href="/biblioteca" icon={<BookOpen className="h-4 w-4" />}>
             Materiales
           </NavLink>
         </nav>

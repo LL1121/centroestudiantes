@@ -15,6 +15,10 @@ class MaterialRead(BaseModel):
     titulo: str
     descripcion: str | None
     autor: str | None
+    anio_publicacion: int | None = None
+    editorial: str | None = None
+    isbn: str | None = None
+    ciudad_publicacion: str | None = None
     carrera: str
     tags: list[str] = []
     tipo_archivo: TipoArchivo
@@ -39,3 +43,17 @@ class MaterialUploadResponse(BaseModel):
 
     material: MaterialRead
     deduplicated: bool = False
+
+
+class MaterialCitationRead(BaseModel):
+    citation_apa: str
+    source: str
+    missing_fields: list[str] = []
+
+
+class MaterialBibliographyUpdate(BaseModel):
+    autor: str | None = None
+    anio_publicacion: int | None = None
+    editorial: str | None = None
+    isbn: str | None = None
+    ciudad_publicacion: str | None = None

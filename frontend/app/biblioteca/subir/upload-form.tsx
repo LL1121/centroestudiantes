@@ -1,6 +1,6 @@
 'use client'
 
-import { FileUp, Loader2, UploadCloud, X } from 'lucide-react'
+import { ChevronDown, FileUp, Loader2, UploadCloud, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
@@ -37,6 +37,12 @@ export function UploadForm() {
   const [carrera, setCarrera] = useState('')
   const [descripcion, setDescripcion] = useState('')
   const [tags, setTags] = useState('')
+  const [autor, setAutor] = useState('')
+  const [anio, setAnio] = useState('')
+  const [editorial, setEditorial] = useState('')
+  const [ciudad, setCiudad] = useState('')
+  const [isbn, setIsbn] = useState('')
+  const [apaOpen, setApaOpen] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [dragging, setDragging] = useState(false)
   const [pending, start] = useTransition()
@@ -74,6 +80,11 @@ export function UploadForm() {
     data.append('carrera', carrera.trim())
     if (descripcion.trim()) data.append('descripcion', descripcion.trim())
     if (tags.trim()) data.append('tags', tags.trim())
+    if (autor.trim()) data.append('autor', autor.trim())
+    if (anio.trim()) data.append('anio_publicacion', anio.trim())
+    if (editorial.trim()) data.append('editorial', editorial.trim())
+    if (ciudad.trim()) data.append('ciudad_publicacion', ciudad.trim())
+    if (isbn.trim()) data.append('isbn', isbn.trim())
 
     start(async () => {
       const response = await fetch('/api/materials/upload', { method: 'POST', body: data })
@@ -94,8 +105,14 @@ export function UploadForm() {
       setCarrera('')
       setDescripcion('')
       setTags('')
+      setAutor('')
+      setAnio('')
+      setEditorial('')
+      setCiudad('')
+      setIsbn('')
+      setApaOpen(false)
       if (inputRef.current) inputRef.current.value = ''
-      router.push('/biblioteca/materiales')
+      router.push('/biblioteca')
       router.refresh()
     })
   }
@@ -133,6 +150,64 @@ export function UploadForm() {
         disabled={pending}
         placeholder="parcial, anatomía, 2025 — separados por coma"
       />
+
+      <div className="rounded-xl border border-border bg-secondary/20">
+        <button
+          type="button"
+          onClick={() => setApaOpen((open) => !open)}
+          disabled={pending}
+          className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm font-medium text-navy transition-colors hover:bg-secondary/40 disabled:opacity-50"
+          aria-expanded={apaOpen}
+        >
+          <span>Metadata para cita APA (opcional)</span>
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${apaOpen ? 'rotate-180' : ''}`}
+            aria-hidden
+          />
+        </button>
+        {apaOpen && (
+          <div className="space-y-4 border-t border-border px-4 py-4">
+            <p className="text-xs text-muted-foreground">
+              Si no completás estos campos, intentaremos inferirlos del documento al generar la cita.
+            </p>
+            <Field
+              label="Autor"
+              value={autor}
+              onChange={setAutor}
+              disabled={pending}
+              placeholder="Apellido, N."
+            />
+            <Field
+              label="Año de publicación"
+              value={anio}
+              onChange={setAnio}
+              disabled={pending}
+              placeholder="2024"
+            />
+            <Field
+              label="Editorial"
+              value={editorial}
+              onChange={setEditorial}
+              disabled={pending}
+              placeholder="Editorial Ejemplo"
+            />
+            <Field
+              label="Ciudad de publicación"
+              value={ciudad}
+              onChange={setCiudad}
+              disabled={pending}
+              placeholder="Buenos Aires"
+            />
+            <Field
+              label="ISBN"
+              value={isbn}
+              onChange={setIsbn}
+              disabled={pending}
+              placeholder="978-..."
+            />
+          </div>
+        )}
+      </div>
 
       <div
         onDragOver={(event) => {

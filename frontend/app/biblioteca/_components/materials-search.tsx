@@ -40,7 +40,7 @@ export function MaterialsSearch({ suggestedTags }: Props) {
 
       const qs = params.toString()
       startTransition(() => {
-        router.push(qs ? `/biblioteca/materiales?${qs}` : '/biblioteca/materiales')
+        router.push(qs ? `/biblioteca?${qs}` : '/biblioteca')
       })
     },
     [q, carrera, tag, semantic, router],
@@ -51,7 +51,7 @@ export function MaterialsSearch({ suggestedTags }: Props) {
     setCarrera('')
     setTag('')
     setSemantic(true)
-    startTransition(() => router.push('/biblioteca/materiales'))
+    startTransition(() => router.push('/biblioteca'))
   }
 
   const hasFilters = Boolean(q.trim() || carrera.trim() || tag.trim())
