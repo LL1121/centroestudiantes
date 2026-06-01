@@ -10,19 +10,28 @@ import {
   ZoomIn,
   ZoomOut,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Document, Page, pdfjs } from 'react-pdf'
-import 'react-pdf/dist/Page/AnnotationLayer.css'
-import 'react-pdf/dist/Page/TextLayer.css'
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from 'react'
 
-import { configurePdfWorker, pdfDocumentOptions } from '@/lib/pdf-worker'
-
-configurePdfWorker()
+import { configurePdfWorkerOn, pdfDocumentOptions } from '@/lib/pdf-worker'
 
 interface Props {
   fileUrl: string
   titulo: string
 }
+
+type ReactPdfModule = typeof import('react-pdf')
+
+type PdfDocument = Awaited<
+  ReturnType<ReactPdfModule['pdfjs']['getDocument']>['promise']
+>
 
 const ZOOM_STEP = 0.2
 const MIN_SCALE = 0.5
@@ -30,22 +39,42 @@ const MAX_SCALE = 3
 
 export function PdfViewer({ fileUrl, titulo }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const [pdf, setPdf] = useState<ReactPdfModule | null>(null)
   const [numPages, setNumPages] = useState<number | null>(null)
   const [pageNumber, setPageNumber] = useState(1)
   const [scale, setScale] = useState(1.1)
+  const deferredScale = useDeferredValue(scale)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [showSearch, setShowSearch] = useState(false)
   const [width, setWidth] = useState<number | null>(null)
+  const [pagePending, startPageTransition] = useTransition()
 
-  type PdfDoc = Awaited<ReturnType<typeof pdfjs.getDocument>['promise']>
   const [matches, setMatches] = useState<number[]>([])
   const [matchIdx, setMatchIdx] = useState(0)
   const [searching, setSearching] = useState(false)
-  const documentRef = useRef<PdfDoc | null>(null)
+  const documentRef = useRef<PdfDocument | null>(null)
 
   const fileSpec = useMemo(() => ({ url: fileUrl }), [fileUrl])
+  const pageWidth = width ? Math.round(width * deferredScale) : undefined
+  const textLayerEnabled = showSearch && search.trim().length > 0
+  const zoomPending = scale !== deferredScale
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const mod = await import('react-pdf')
+      await import('react-pdf/dist/Page/AnnotationLayer.css')
+      await import('react-pdf/dist/Page/TextLayer.css')
+      if (cancelled) return
+      configurePdfWorkerOn(mod.pdfjs)
+      setPdf(mod)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -57,20 +86,23 @@ export function PdfViewer({ fileUrl, titulo }: Props) {
     return () => observer.disconnect()
   }, [])
 
-  const onDocumentLoad = (doc: PdfDoc) => {
+  const onDocumentLoad = useCallback((doc: PdfDocument) => {
     documentRef.current = doc
     setNumPages(doc.numPages)
     setLoading(false)
-  }
+  }, [])
 
-  const onDocumentError = (err: Error) => {
+  const onDocumentError = useCallback((err: Error) => {
     setError(err.message || 'No pudimos cargar el PDF')
     setLoading(false)
-  }
+  }, [])
 
-  const goPrev = () => setPageNumber((p) => Math.max(1, p - 1))
+  const goPrev = () =>
+    startPageTransition(() => setPageNumber((p) => Math.max(1, p - 1)))
   const goNext = () =>
-    setPageNumber((p) => Math.min(numPages ?? p, p + 1))
+    startPageTransition(() =>
+      setPageNumber((p) => Math.min(numPages ?? p, p + 1)),
+    )
   const zoomIn = () =>
     setScale((s) => Math.min(MAX_SCALE, +(s + ZOOM_STEP).toFixed(2)))
   const zoomOut = () =>
@@ -88,10 +120,6 @@ export function PdfViewer({ fileUrl, titulo }: Props) {
     setSearching(true)
     try {
       const found: number[] = []
-      // Recorrido lineal: por la cantidad de páginas típicas de un apunte
-      // (decenas a cientos) y operar en cliente, alcanza con buscar el string
-      // en el texto plano de cada página. Si el material crece mucho podemos
-      // mover esto al backend usando los chunks existentes en pgvector.
       for (let p = 1; p <= doc.numPages; p++) {
         const page = await doc.getPage(p)
         const content = await page.getTextContent()
@@ -103,7 +131,9 @@ export function PdfViewer({ fileUrl, titulo }: Props) {
       }
       setMatches(found)
       setMatchIdx(0)
-      if (found.length > 0) setPageNumber(found[0]!)
+      if (found.length > 0) {
+        startPageTransition(() => setPageNumber(found[0]!))
+      }
     } finally {
       setSearching(false)
     }
@@ -113,14 +143,14 @@ export function PdfViewer({ fileUrl, titulo }: Props) {
     if (matches.length === 0) return
     const next = (matchIdx + 1) % matches.length
     setMatchIdx(next)
-    setPageNumber(matches[next]!)
+    startPageTransition(() => setPageNumber(matches[next]!))
   }
 
   const goPrevMatch = () => {
     if (matches.length === 0) return
     const prev = (matchIdx - 1 + matches.length) % matches.length
     setMatchIdx(prev)
-    setPageNumber(matches[prev]!)
+    startPageTransition(() => setPageNumber(matches[prev]!))
   }
 
   const closeSearch = () => {
@@ -130,14 +160,31 @@ export function PdfViewer({ fileUrl, titulo }: Props) {
     setMatchIdx(0)
   }
 
-  // Resaltado custom del término en la text layer de la página actual.
   const customTextRenderer = useMemo(() => {
-    if (!search.trim()) return undefined
+    if (!textLayerEnabled) return undefined
     const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     const re = new RegExp(`(${escaped})`, 'gi')
     return ({ str }: { str: string }) =>
       str.replace(re, '<mark class="biblioteca-pdf-mark">$1</mark>')
-  }, [search])
+  }, [search, textLayerEnabled])
+
+  const docOptions = useMemo(
+    () => (pdf ? pdfDocumentOptions(pdf.pdfjs.version) : undefined),
+    [pdf],
+  )
+
+  if (!pdf) {
+    return (
+      <section className="mt-3 flex min-h-[70vh] flex-1 items-center justify-center rounded-2xl border border-border bg-card sm:mt-4">
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          Preparando visor PDF…
+        </p>
+      </section>
+    )
+  }
+
+  const { Document, Page } = pdf
 
   return (
     <section className="mt-3 flex min-h-0 flex-1 flex-col rounded-2xl border border-border bg-card shadow-sm sm:mt-4">
@@ -145,6 +192,7 @@ export function PdfViewer({ fileUrl, titulo }: Props) {
         pageNumber={pageNumber}
         numPages={numPages}
         scale={scale}
+        zoomPending={zoomPending}
         showSearch={showSearch}
         onPrev={goPrev}
         onNext={goNext}
@@ -177,38 +225,42 @@ export function PdfViewer({ fileUrl, titulo }: Props) {
             {error}
           </div>
         ) : (
-          <Document
-            file={fileSpec}
-            onLoadSuccess={onDocumentLoad}
-            onLoadError={onDocumentError}
-            loading={
-              <div className="flex h-[60vh] items-center justify-center text-sm text-muted-foreground">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Abriendo PDF…
-              </div>
-            }
-            error={
-              <div className="text-sm text-destructive">
-                No pudimos abrir el PDF.
-              </div>
-            }
-            externalLinkTarget="_blank"
-            options={pdfDocumentOptions()}
+          <div
+            className={`relative transition-opacity duration-150 ${pagePending || zoomPending ? 'opacity-80' : 'opacity-100'}`}
           >
-            <Page
-              pageNumber={pageNumber}
-              scale={scale}
-              width={width ?? undefined}
-              renderTextLayer
-              renderAnnotationLayer
-              customTextRenderer={customTextRenderer}
-              className="biblioteca-pdf-page"
+            <Document
+              file={fileSpec}
+              onLoadSuccess={onDocumentLoad}
+              onLoadError={onDocumentError}
               loading={
-                <div className="flex h-[40vh] items-center justify-center text-sm text-muted-foreground">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Renderizando página…
+                <div className="flex h-[60vh] items-center justify-center text-sm text-muted-foreground">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Abriendo PDF…
                 </div>
               }
-            />
-          </Document>
+              error={
+                <div className="text-sm text-destructive">
+                  No pudimos abrir el PDF.
+                </div>
+              }
+              externalLinkTarget="_blank"
+              options={docOptions}
+            >
+              <Page
+                key={`${pageNumber}-${pageWidth ?? 'auto'}`}
+                pageNumber={pageNumber}
+                width={pageWidth}
+                renderTextLayer={textLayerEnabled}
+                renderAnnotationLayer={false}
+                customTextRenderer={customTextRenderer}
+                className="biblioteca-pdf-page"
+                loading={
+                  <div className="flex h-[40vh] items-center justify-center text-sm text-muted-foreground">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Renderizando página…
+                  </div>
+                }
+              />
+            </Document>
+          </div>
         )}
         {loading && !error && (
           <p className="sr-only" aria-live="polite">
@@ -245,6 +297,7 @@ interface ToolbarProps {
   pageNumber: number
   numPages: number | null
   scale: number
+  zoomPending: boolean
   showSearch: boolean
   onPrev: () => void
   onNext: () => void
@@ -258,6 +311,7 @@ function Toolbar({
   pageNumber,
   numPages,
   scale,
+  zoomPending,
   showSearch,
   onPrev,
   onNext,
@@ -289,6 +343,9 @@ function Toolbar({
       </ToolbarButton>
       <span className="text-xs tabular-nums text-muted-foreground">
         {Math.round(scale * 100)}%
+        {zoomPending && (
+          <Loader2 className="ml-1 inline h-3 w-3 animate-spin align-middle" aria-hidden />
+        )}
       </span>
       <ToolbarButton onClick={onZoomIn} disabled={scale >= MAX_SCALE} aria-label="Ampliar">
         <ZoomIn className="h-4 w-4" />

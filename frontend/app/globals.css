@@ -50,30 +50,33 @@
 /* Biblioteca Digital — modo oscuro (clase .dark en ancestro) */
 .dark {
   color-scheme: dark;
-  --background: #0b1624;
-  --foreground: #eef4fa;
-  --card: #132337;
-  --card-foreground: #eef4fa;
-  --popover: #132337;
-  --popover-foreground: #eef4fa;
+  --background: #0a1422;
+  --foreground: #e8eef7;
+  --card: #15243a;
+  --card-foreground: #e8eef7;
+  --popover: #15243a;
+  --popover-foreground: #e8eef7;
   --primary: #4da3e8;
-  --primary-foreground: #0b1624;
-  --secondary: #1a2d44;
-  --secondary-foreground: #dce6f0;
-  --muted: #1a2d44;
-  --muted-foreground: #94a8be;
-  --accent: #c6a165;
-  --accent-foreground: #0b1624;
+  --primary-foreground: #0a1422;
+  --secondary: #1d3050;
+  --secondary-foreground: #d8e4f3;
+  --muted: #1d3050;
+  --muted-foreground: #a3b6cd;
+  --accent: #d4b88a;
+  --accent-foreground: #0a1422;
   --destructive: #f87171;
   --destructive-foreground: #ffffff;
-  --border: #2a4060;
-  --input: #2a4060;
+  --border: #34507a;
+  --input: #34507a;
   --ring: #4da3e8;
   --celeste: #75aadb;
   --celeste-light: #5a8fc8;
-  --gold: #c6a165;
-  --gold-light: #d4b88a;
-  --navy: #e8f4fc;
+  --gold: #d4b88a;
+  --gold-light: #e6cda6;
+  /* `--navy` se mantiene como "color de marca / texto destacado".
+     En dark debe leerse claro pero NO casi blanco para evitar que gradientes
+     `from-primary to-navy` queden monocromos. */
+  --navy: #c8dcf2;
 }
 
 @theme inline {
@@ -128,31 +131,33 @@
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--secondary);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--primary);
+  background: color-mix(in srgb, var(--muted-foreground) 35%, transparent);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--navy);
-}
-
-.dark ::-webkit-scrollbar-track {
-  background: var(--secondary);
+  background: color-mix(in srgb, var(--primary) 70%, transparent);
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: var(--primary);
+  background: color-mix(in srgb, var(--muted-foreground) 45%, transparent);
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: var(--celeste);
+  background: color-mix(in srgb, var(--celeste) 70%, transparent);
+}
+
+* {
+  scrollbar-color: color-mix(in srgb, var(--muted-foreground) 35%, transparent) transparent;
+  scrollbar-width: thin;
 }
 
 /* Glassmorphism utility */
@@ -161,6 +166,11 @@
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.dark .glass {
+  background: rgba(21, 36, 58, 0.7);
+  border-color: rgba(52, 80, 122, 0.5);
 }
 
 /* Gold glow animation */

@@ -112,13 +112,14 @@ export function EpubViewer({ fileUrl, titulo }: Props) {
     if (!rendition) return
     const isDark = theme === 'dark'
     rendition.themes.register('biblioteca-light', {
-      body: { background: '#ffffff', color: '#1a1a1a' },
+      body: { background: '#ffffff', color: '#1a1a1a', 'line-height': '1.6' },
       a: { color: '#0077cc' },
     })
     rendition.themes.register('biblioteca-dark', {
-      body: { background: '#0b1624', color: '#eef4fa' },
-      a: { color: '#4da3e8' },
-      'p, li, h1, h2, h3, h4, h5, h6, span': { color: '#eef4fa !important' },
+      body: { background: '#0a1422', color: '#e8eef7', 'line-height': '1.6' },
+      a: { color: '#75aadb' },
+      'p, li, h1, h2, h3, h4, h5, h6, span, blockquote': { color: '#e8eef7 !important' },
+      'h1, h2, h3, h4, h5, h6': { color: '#c8dcf2 !important' },
     })
     rendition.themes.select(isDark ? 'biblioteca-dark' : 'biblioteca-light')
   }, [theme, loading])

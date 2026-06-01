@@ -147,7 +147,10 @@ function PdfThumbnail({ fileUrl }: { fileUrl: string }) {
   }, [])
 
   return (
-    <div ref={containerRef} className="absolute inset-0 flex items-center justify-center bg-white">
+    <div
+      ref={containerRef}
+      className="absolute inset-0 flex items-center justify-center bg-white dark:bg-zinc-200"
+    >
       {errored ? (
         <FallbackTile label="PDF" />
       ) : !visible || !PdfPieces || !width ? (
@@ -160,7 +163,7 @@ function PdfThumbnail({ fileUrl }: { fileUrl: string }) {
           onLoadError={() => setErrored(true)}
           onSourceError={() => setErrored(true)}
           externalLinkTarget="_blank"
-          options={pdfDocumentOptions()}
+          options={pdfDocumentOptions(PdfPieces.pdfjs.version)}
         >
           <PdfPieces.Page
             pageNumber={1}

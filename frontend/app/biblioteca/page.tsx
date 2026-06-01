@@ -173,7 +173,7 @@ function MaterialCard({
         <div className="absolute right-4 top-4 flex flex-col items-end gap-1">
           <StatusBadge status={material.status} />
           {matchLabel && (
-            <span className="rounded-full bg-gold/90 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white shadow-sm">
+            <span className="rounded-full bg-gold/90 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-zinc-900 shadow-sm">
               {matchLabel}
             </span>
           )}
@@ -236,8 +236,8 @@ function MaterialCard({
 
 function StatusBadge({ status }: { status: MaterialSearchRead['status'] }) {
   const styles: Record<MaterialSearchRead['status'], string> = {
-    pending: 'bg-primary/90 text-white',
-    processing: 'bg-primary/90 text-white',
+    pending: 'bg-primary/90 text-primary-foreground',
+    processing: 'bg-primary/90 text-primary-foreground',
     active: 'bg-emerald-600/90 text-white',
     indexed: 'bg-emerald-600/90 text-white',
     failed: 'bg-destructive/90 text-white',

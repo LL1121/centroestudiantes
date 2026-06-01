@@ -33,7 +33,7 @@ export function AiFab({ isGuest }: Props) {
       aria-label="Asistente IA"
       className={cn(
         'fixed right-4 z-40 inline-flex items-center gap-2 rounded-full shadow-lg shadow-primary/30 transition-all',
-        'bg-gradient-to-br from-primary to-navy text-primary-foreground',
+        'bg-gradient-to-br from-primary to-celeste-light text-primary-foreground dark:from-primary dark:to-celeste',
         'hover:scale-105 hover:shadow-primary/40 active:scale-95',
         'h-14 w-14 justify-center md:h-auto md:w-auto md:px-5 md:py-3',
       )}
