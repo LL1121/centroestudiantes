@@ -27,7 +27,9 @@ export async function GET(request: Request, { params }: RouteParams) {
 
   const headers: Record<string, string> = {}
   const range = request.headers.get('range')
+  const ifNoneMatch = request.headers.get('if-none-match')
   if (range) headers.Range = range
+  if (ifNoneMatch) headers['If-None-Match'] = ifNoneMatch
   if (token) headers.Authorization = `Bearer ${token}`
 
   const upstream = await fetch(`${BACKEND_URL}/api/v1/materials/${id}/file`, {
@@ -43,6 +45,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     'content-disposition',
     'accept-ranges',
     'cache-control',
+    'etag',
   ]) {
     const v = upstream.headers.get(name)
     if (v) passthroughHeaders.set(name, v)

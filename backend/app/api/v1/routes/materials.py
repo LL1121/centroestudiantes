@@ -365,10 +365,18 @@ async def stream_material_file(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Archivo no encontrado en storage.")
 
     total = fs_path.stat().st_size
+    # El archivo es immutable (clave por SHA256); el browser puede cachearlo
+    # agresivamente. ETag permite revalidaciones baratas si el navegador
+    # decide volver a chequear.
+    etag = f'"{material.sha256}"'
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": etag})
+
     headers = {
         "Accept-Ranges": "bytes",
         "Content-Disposition": f'inline; filename="{material.titulo}.{material.tipo_archivo.value}"',
-        "Cache-Control": "private, max-age=300",
+        "Cache-Control": "public, max-age=86400, immutable",
+        "ETag": etag,
     }
 
     range_header = request.headers.get("range") or request.headers.get("Range")

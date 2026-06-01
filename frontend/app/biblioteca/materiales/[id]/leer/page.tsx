@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
@@ -15,16 +16,20 @@ interface PageProps {
   params: Promise<{ id: string }>
 }
 
-async function loadMaterial(id: string): Promise<MaterialRead | null> {
+/**
+ * `cache()` deduplica la request dentro del mismo render (Next 16 RSC).
+ * Sin esto, `generateMetadata` y la page disparan dos requests al backend.
+ */
+const loadMaterial = cache(async (id: string): Promise<MaterialRead | null> => {
   try {
     return await serverFetch<MaterialRead>(`/api/v1/materials/${id}`, { authenticated: false })
   } catch (error) {
     if (error instanceof ApiRequestError && error.status === 404) return null
     throw error
   }
-}
+})
 
-async function loadSimilar(id: string): Promise<MaterialSearchRead[]> {
+const loadSimilar = cache(async (id: string): Promise<MaterialSearchRead[]> => {
   try {
     return await serverFetch<MaterialSearchRead[]>(
       `/api/v1/materials/${id}/similar?limit=6`,
@@ -33,7 +38,7 @@ async function loadSimilar(id: string): Promise<MaterialSearchRead[]> {
   } catch {
     return []
   }
-}
+})
 
 export async function generateMetadata({ params }: PageProps) {
   const { id } = await params

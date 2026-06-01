@@ -1,10 +1,21 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { BookOpen, FileImage, FileText, Loader2 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
 
 import type { TipoArchivo } from '@/lib/api/types'
-import { configurePdfWorkerOn, pdfDocumentOptions } from '@/lib/pdf-worker'
+
+const PdfThumbnail = dynamic(
+  () => import('./pdf-thumbnail').then((mod) => mod.PdfThumbnail),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-zinc-200">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    ),
+  },
+)
 
 interface Props {
   materialId: string
@@ -15,11 +26,9 @@ interface Props {
 
 /**
  * Preview chico del documento para mostrar en las cards del catálogo.
- * - PDF: primer page renderizado con react-pdf (lazy via IntersectionObserver).
+ * - PDF: primer page renderizado por `PdfThumbnail` (cliente puro, lazy).
  * - JPEG/PNG: <img> sirve directo del backend.
- * - EPUB: gradient + icono (la librería de epub es muy pesada para una tarjeta).
- *
- * `ready` evita renderizar el visor para materiales todavía en procesamiento.
+ * - EPUB / no-ready: gradient + icono.
  */
 export function MaterialThumbnail({ materialId, tipo, titulo, ready }: Props) {
   const fileUrl = `/api/materials/${materialId}/file`
@@ -91,99 +100,6 @@ function ThumbnailFrame({
       className={`relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-secondary/40 shadow-sm ${toneClass[tone]}`}
     >
       {children}
-    </div>
-  )
-}
-
-function PdfThumbnail({ fileUrl }: { fileUrl: string }) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [visible, setVisible] = useState(false)
-  const [width, setWidth] = useState<number | null>(null)
-  const [errored, setErrored] = useState(false)
-  const [PdfPieces, setPdfPieces] = useState<typeof import('react-pdf') | null>(null)
-
-  useEffect(() => {
-    if (!containerRef.current) return
-    const el = containerRef.current
-    const io = new IntersectionObserver(
-      (entries) => {
-        const isVisible = entries.some((e) => e.isIntersecting)
-        if (isVisible) {
-          setVisible(true)
-          io.disconnect()
-        }
-      },
-      { rootMargin: '200px' },
-    )
-    io.observe(el)
-    return () => io.disconnect()
-  }, [])
-
-  useEffect(() => {
-    if (!visible || PdfPieces) return
-    let cancelled = false
-    void (async () => {
-      const mod = await import('react-pdf')
-      await import('react-pdf/dist/Page/AnnotationLayer.css')
-      await import('react-pdf/dist/Page/TextLayer.css')
-      if (cancelled) return
-      configurePdfWorkerOn(mod.pdfjs)
-      setPdfPieces(mod)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [visible, PdfPieces])
-
-  useEffect(() => {
-    if (!containerRef.current) return
-    const el = containerRef.current
-    const ro = new ResizeObserver(() => {
-      setWidth(el.clientWidth)
-    })
-    ro.observe(el)
-    setWidth(el.clientWidth)
-    return () => ro.disconnect()
-  }, [])
-
-  return (
-    <div
-      ref={containerRef}
-      className="absolute inset-0 flex items-center justify-center bg-white dark:bg-zinc-200"
-    >
-      {errored ? (
-        <FallbackTile label="PDF" />
-      ) : !visible || !PdfPieces || !width ? (
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-      ) : (
-        <PdfPieces.Document
-          file={{ url: fileUrl }}
-          loading={<Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
-          error={<FallbackTile label="PDF" />}
-          onLoadError={() => setErrored(true)}
-          onSourceError={() => setErrored(true)}
-          externalLinkTarget="_blank"
-          options={pdfDocumentOptions(PdfPieces.pdfjs.version)}
-        >
-          <PdfPieces.Page
-            pageNumber={1}
-            width={width}
-            renderAnnotationLayer={false}
-            renderTextLayer={false}
-            loading={<Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
-            onRenderError={() => setErrored(true)}
-          />
-        </PdfPieces.Document>
-      )}
-    </div>
-  )
-}
-
-function FallbackTile({ label }: { label: string }) {
-  return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-gradient-to-br from-muted/40 to-secondary text-muted-foreground">
-      <FileText className="h-7 w-7" aria-hidden />
-      <span className="text-[10px] font-semibold uppercase tracking-wider">{label}</span>
     </div>
   )
 }
