@@ -120,12 +120,16 @@ Apuntá los hostnames públicos a los servicios docker. En el config de
 
 ```yaml
 ingress:
-  - hostname: prueba.lyntrix.com.ar
+  - hostname: biblioteca.ies9018malargue.edu.ar
     service: http://centro-frontend:3000
-  - hostname: api-prueba.lyntrix.com.ar
+  - hostname: api.biblioteca.ies9018malargue.edu.ar
     service: http://centro-backend:8000
   - service: http_status:404
 ```
+
+> El sitio principal del IES (`https://ies9018malargue.edu.ar/`) sigue
+> sirviéndose desde su WordPress habitual. Este stack solo expone el
+> subdominio `biblioteca.*` y su API.
 
 Asegurate de que el contenedor `cloudflared` esté en la misma
 `lyntrix_network`. Usá los **container_name** (`centro-frontend`,
@@ -144,11 +148,11 @@ curl -sI http://127.0.0.1:3005/biblioteca/login | head -3
 
 Si eso funciona pero el dominio no, el tunnel apunta al contenedor equivocado.
 
-- `https://prueba.lyntrix.com.ar` — landing y `/biblioteca`.
-- `https://api-prueba.lyntrix.com.ar/health` — debe responder
-  `{"status":"ok"}`.
-- `https://api-prueba.lyntrix.com.ar/docs` — Swagger UI (podés
-  protegerla luego con CF Access si querés).
+- `https://biblioteca.ies9018malargue.edu.ar` — landing y `/biblioteca`.
+- `https://api.biblioteca.ies9018malargue.edu.ar/health` — debe
+  responder `{"status":"ok"}`.
+- `https://api.biblioteca.ies9018malargue.edu.ar/docs` — Swagger UI
+  (podés protegerla luego con CF Access si querés).
 
 ### Notas operativas
 
@@ -158,7 +162,7 @@ Si eso funciona pero el dominio no, el tunnel apunta al contenedor equivocado.
   envía `https` aunque el contenedor escuche HTTP). Si entrás por
   `http://IP:3005` sin tunnel, definí `COOKIE_SECURE=false` en `.env` o usá
   el dominio HTTPS del tunnel.
-- **CORS**: `CORS_ORIGINS` arranca en `https://prueba.lyntrix.com.ar`.
+- **CORS**: `CORS_ORIGINS` arranca en `https://biblioteca.ies9018malargue.edu.ar`.
   El frontend igualmente usa proxies internos (route handlers de
   Next.js) → no necesita CORS para sí mismo.
 - **OCR**: la imagen del backend incluye `tesseract-ocr` con paquetes

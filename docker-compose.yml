@@ -65,7 +65,7 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: "30"
       REFRESH_TOKEN_EXPIRE_DAYS: "14"
 
-      CORS_ORIGINS: ${CORS_ORIGINS:-https://prueba.lyntrix.com.ar}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://biblioteca.ies9018malargue.edu.ar}
 
       STORAGE_BACKEND: local
       STORAGE_ROOT: /app/var/storage
