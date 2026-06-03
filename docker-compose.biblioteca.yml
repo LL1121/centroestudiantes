@@ -102,6 +102,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        BIBLIOTECA_ONLY: "true"
     image: biblioteca-web:latest
     container_name: biblioteca-frontend
     hostname: biblioteca-frontend
