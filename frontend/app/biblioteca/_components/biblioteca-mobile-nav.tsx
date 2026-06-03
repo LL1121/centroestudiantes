@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { BookOpen, LogIn, Upload } from 'lucide-react'
 
+import { bibHref } from '@/lib/biblioteca-path'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -13,24 +14,25 @@ interface Props {
 const items = (isGuest: boolean) =>
   [
     {
-      href: '/biblioteca',
+      href: bibHref('/biblioteca'),
       label: 'Catálogo',
       icon: BookOpen,
       match: (p: string) =>
-        p === '/biblioteca' || p.startsWith('/biblioteca/materiales'),
+        p === bibHref('/biblioteca') || p.startsWith(bibHref('/biblioteca/materiales')),
     },
     isGuest
       ? {
-          href: '/biblioteca/login',
+          href: bibHref('/biblioteca/login'),
           label: 'Entrar',
           icon: LogIn,
-          match: (p: string) => p === '/biblioteca/login' || p === '/biblioteca/registro',
+          match: (p: string) =>
+            p === bibHref('/biblioteca/login') || p === bibHref('/biblioteca/registro'),
         }
       : {
-          href: '/biblioteca/subir',
+          href: bibHref('/biblioteca/subir'),
           label: 'Subir',
           icon: Upload,
-          match: (p: string) => p === '/biblioteca/subir',
+          match: (p: string) => p === bibHref('/biblioteca/subir'),
         },
   ] as const
 

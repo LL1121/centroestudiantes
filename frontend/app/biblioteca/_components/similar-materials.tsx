@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { BookOpen } from 'lucide-react'
 
 import type { MaterialSearchRead } from '@/lib/api/types'
+import { bibHref } from '@/lib/biblioteca-path'
 
 import { MaterialTags } from './material-tags'
 import { MaterialThumbnail } from './material-thumbnail'
@@ -55,7 +56,7 @@ function SimilarCard({ material }: { material: MaterialSearchRead }) {
           <MaterialTags tags={material.tags ?? []} className="mt-0" />
           {ready ? (
             <Link
-              href={`/biblioteca/materiales/${material.id}/leer`}
+              href={bibHref(`/biblioteca/materiales/${material.id}/leer`)}
               className="mt-auto inline-flex min-h-9 items-center justify-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
             >
               <BookOpen className="h-3.5 w-3.5" aria-hidden />

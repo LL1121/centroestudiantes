@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Sparkles } from 'lucide-react'
 
+import { bibHref } from '@/lib/biblioteca-path'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -19,13 +20,13 @@ interface Props {
 export function AiFab({ isGuest }: Props) {
   const pathname = usePathname()
 
-  const hideOn = ['/biblioteca/asistente', '/biblioteca/login', '/biblioteca/registro']
+  const hideOn = ['/biblioteca/asistente', '/biblioteca/login', '/biblioteca/registro'].map(bibHref)
   if (pathname.includes('/leer')) return null
   if (hideOn.some((p) => pathname.startsWith(p))) return null
 
   const href = isGuest
-    ? '/biblioteca/login?redirect=/biblioteca/asistente'
-    : '/biblioteca/asistente'
+    ? `${bibHref('/biblioteca/login')}?redirect=${bibHref('/biblioteca/asistente')}`
+    : bibHref('/biblioteca/asistente')
 
   return (
     <Link

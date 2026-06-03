@@ -5,6 +5,7 @@ import { ChevronLeft } from 'lucide-react'
 
 import { serverFetch, ApiRequestError } from '@/lib/api/server'
 import type { MaterialRead, MaterialSearchRead } from '@/lib/api/types'
+import { bibHref } from '@/lib/biblioteca-path'
 
 import { CitationButton } from '../../../_components/citation-button'
 import { SimilarMaterials } from '../../../_components/similar-materials'
@@ -57,7 +58,7 @@ export default async function LeerPage({ params }: PageProps) {
     <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-3 py-3 sm:px-6 sm:py-4 lg:px-8">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <Link
-          href="/biblioteca"
+          href={bibHref('/biblioteca')}
           className="inline-flex min-h-10 items-center gap-1 self-start text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
         >
           <ChevronLeft className="h-4 w-4" aria-hidden />

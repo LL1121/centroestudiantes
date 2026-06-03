@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 
 import { getOptionalUser } from '@/lib/api/auth'
+import { bibHref } from '@/lib/biblioteca-path'
 
 import { SubirTabs } from './subir-tabs'
 
@@ -15,12 +16,12 @@ export const metadata = {
 export default async function SubirPage() {
   const user = await getOptionalUser()
   if (!user) {
-    redirect('/biblioteca/login?redirect=/biblioteca/subir')
+    redirect(`${bibHref('/biblioteca/login')}?redirect=${bibHref('/biblioteca/subir')}`)
   }
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 lg:px-8">
       <Link
-        href="/biblioteca"
+        href={bibHref('/biblioteca')}
         className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
       >
         <ChevronLeft className="h-4 w-4" aria-hidden />

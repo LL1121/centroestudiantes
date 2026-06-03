@@ -4,6 +4,8 @@ import { Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { use, useState, useTransition } from 'react'
 
+import { bibHref } from '@/lib/biblioteca-path'
+
 interface Props {
   searchParamsPromise: Promise<{ redirect?: string }>
 }
@@ -44,7 +46,7 @@ export function RegisterForm({ searchParamsPromise }: Props) {
         return
       }
       const target =
-        params.redirect && params.redirect.startsWith('/') ? params.redirect : '/biblioteca'
+        params.redirect && params.redirect.startsWith('/') ? params.redirect : bibHref('/biblioteca')
       router.replace(target)
       router.refresh()
     })

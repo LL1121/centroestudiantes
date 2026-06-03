@@ -4,6 +4,8 @@ import { Loader2, Search, Sparkles, X } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useState, useTransition } from 'react'
 
+import { bibHref } from '@/lib/biblioteca-path'
+
 interface Props {
   suggestedTags: string[]
 }
@@ -40,7 +42,7 @@ export function MaterialsSearch({ suggestedTags }: Props) {
 
       const qs = params.toString()
       startTransition(() => {
-        router.push(qs ? `/biblioteca?${qs}` : '/biblioteca')
+        router.push(qs ? `${bibHref('/biblioteca')}?${qs}` : bibHref('/biblioteca'))
       })
     },
     [q, carrera, tag, semantic, router],
@@ -51,7 +53,7 @@ export function MaterialsSearch({ suggestedTags }: Props) {
     setCarrera('')
     setTag('')
     setSemantic(true)
-    startTransition(() => router.push('/biblioteca'))
+    startTransition(() => router.push(bibHref('/biblioteca')))
   }
 
   const hasFilters = Boolean(q.trim() || carrera.trim() || tag.trim())

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 
 import { getOptionalUser } from '@/lib/api/auth'
+import { bibHref } from '@/lib/biblioteca-path'
 
 import { ChatShell } from './chat-shell'
 
@@ -19,7 +20,7 @@ interface PageProps {
 export default async function AsistentePage({ searchParams }: PageProps) {
   const user = await getOptionalUser()
   if (!user) {
-    redirect('/biblioteca/login?redirect=/biblioteca/asistente')
+    redirect(`${bibHref('/biblioteca/login')}?redirect=${bibHref('/biblioteca/asistente')}`)
   }
   const params = await searchParams
   const materialId = params.material_id?.trim() || null
@@ -28,7 +29,7 @@ export default async function AsistentePage({ searchParams }: PageProps) {
   return (
     <div className="mx-auto flex min-h-dvh max-w-3xl flex-col px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
       <Link
-        href="/biblioteca"
+        href={bibHref('/biblioteca')}
         className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
       >
         <ChevronLeft className="h-4 w-4" aria-hidden />

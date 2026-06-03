@@ -4,6 +4,8 @@ import { Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { use, useState, useTransition } from 'react'
 
+import { bibHref } from '@/lib/biblioteca-path'
+
 interface Props {
   searchParamsPromise: Promise<{ redirect?: string }>
 }
@@ -30,7 +32,8 @@ export function LoginForm({ searchParamsPromise }: Props) {
         setError(data.detail ?? 'No pudimos validar tus credenciales')
         return
       }
-      const target = params.redirect && params.redirect.startsWith('/') ? params.redirect : '/biblioteca'
+      const target =
+        params.redirect && params.redirect.startsWith('/') ? params.redirect : bibHref('/biblioteca')
       router.replace(target)
       router.refresh()
     })

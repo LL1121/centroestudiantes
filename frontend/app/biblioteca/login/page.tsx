@@ -2,6 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 
 import { SITE_LOGO } from '@/lib/branding'
+import { bibHref } from '@/lib/biblioteca-path'
 import { LoginForm } from './login-form'
 
 export const metadata = {
@@ -35,12 +36,12 @@ export default function LoginPage({
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
           ¿Todavía no tenés cuenta?{' '}
-          <Link href="/biblioteca/registro" className="font-medium text-primary hover:underline">
+          <Link href={bibHref('/biblioteca/registro')} className="font-medium text-primary hover:underline">
             Creá una
           </Link>
         </p>
         <p className="mt-2 text-center text-xs text-muted-foreground">
-          <Link href="/biblioteca" className="underline hover:text-primary">
+          <Link href={bibHref('/biblioteca')} className="underline hover:text-primary">
             Volver al catálogo
           </Link>
         </p>

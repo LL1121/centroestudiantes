@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 
+import { bibHref } from '@/lib/biblioteca-path'
+
 import {
   ACCEPT,
   ALLOWED_MIME,
@@ -96,7 +98,7 @@ export function UploadForm() {
       setIsbn('')
       setApaOpen(false)
       if (inputRef.current) inputRef.current.value = ''
-      router.push('/biblioteca')
+      router.push(bibHref('/biblioteca'))
       router.refresh()
     })
   }

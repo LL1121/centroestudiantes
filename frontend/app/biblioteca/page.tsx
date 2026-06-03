@@ -5,6 +5,7 @@ import { BookOpen, MessageCircle, Sparkles } from 'lucide-react'
 import { getOptionalUser } from '@/lib/api/auth'
 import { serverFetch } from '@/lib/api/server'
 import type { MaterialRead, MaterialSearchRead, UserRead } from '@/lib/api/types'
+import { bibHref } from '@/lib/biblioteca-path'
 
 import { BibliotecaHero } from './_components/biblioteca-hero'
 import { DeleteMaterialButton } from './_components/delete-material-button'
@@ -138,7 +139,7 @@ function EmptyState({ hasSearch, isGuest }: { hasSearch: boolean; isGuest: boole
       </p>
       {!isGuest && !hasSearch && (
         <Link
-          href="/biblioteca/subir"
+          href={bibHref('/biblioteca/subir')}
           className="mt-5 inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
         >
           Subir el primer material
@@ -158,7 +159,7 @@ function MaterialCard({
   canDelete: boolean
 }) {
   const ready = material.status === 'active' || material.status === 'indexed'
-  const asistenteHref = `/biblioteca/asistente?material_id=${encodeURIComponent(material.id)}&titulo=${encodeURIComponent(material.titulo)}`
+  const asistenteHref = `${bibHref('/biblioteca/asistente')}?material_id=${encodeURIComponent(material.id)}&titulo=${encodeURIComponent(material.titulo)}`
   const matchLabel = matchKindLabel(material.match_kind)
 
   return (
@@ -205,7 +206,7 @@ function MaterialCard({
           {ready ? (
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
               <Link
-                href={`/biblioteca/materiales/${material.id}/leer`}
+                href={bibHref(`/biblioteca/materiales/${material.id}/leer`)}
                 className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
               >
                 <BookOpen className="h-4 w-4" aria-hidden />

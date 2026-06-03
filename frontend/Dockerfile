@@ -17,9 +17,10 @@ RUN corepack enable \
     && corepack prepare "pnpm@${PNPM_VERSION}" --activate
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# Activa el modo "solo biblioteca" (raíz sirve el catálogo) en el deploy aislado.
-ARG BIBLIOTECA_ONLY=false
-ENV BIBLIOTECA_ONLY=${BIBLIOTECA_ONLY}
+# Activa el modo "solo biblioteca" (la app vive en la raíz) en el deploy aislado.
+# Debe ser NEXT_PUBLIC_* para inlinearse también en el bundle del cliente.
+ARG NEXT_PUBLIC_BIBLIOTECA_ONLY=false
+ENV NEXT_PUBLIC_BIBLIOTECA_ONLY=${NEXT_PUBLIC_BIBLIOTECA_ONLY}
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
 

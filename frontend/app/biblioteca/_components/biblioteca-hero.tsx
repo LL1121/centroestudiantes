@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { BookOpen, Layers, Sparkles, Tag, Upload } from 'lucide-react'
 
 import type { MaterialSearchRead, UserRead } from '@/lib/api/types'
+import { bibHref } from '@/lib/biblioteca-path'
 
 interface Props {
   materials: MaterialSearchRead[]
@@ -19,7 +20,9 @@ export function BibliotecaHero({ materials, totalTags, user }: Props) {
   }).length
 
   const isGuest = user === null
-  const subirHref = isGuest ? '/biblioteca/login?redirect=/biblioteca/subir' : '/biblioteca/subir'
+  const subirHref = isGuest
+    ? `${bibHref('/biblioteca/login')}?redirect=${bibHref('/biblioteca/subir')}`
+    : bibHref('/biblioteca/subir')
 
   return (
     <section className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-primary/10 via-card to-gold/10 px-5 py-7 shadow-sm sm:px-8 sm:py-9">

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, useTransition } from 'react'
 import { ChevronDown, LogIn, LogOut, UserPlus } from 'lucide-react'
 
 import type { UserRead } from '@/lib/api/types'
+import { bibHref } from '@/lib/biblioteca-path'
 
 interface Props {
   user: UserRead | null
@@ -36,7 +37,7 @@ export function UserMenu({ user }: Props) {
     start(async () => {
       await fetch('/api/auth/logout', { method: 'POST' })
       setOpen(false)
-      router.replace('/biblioteca')
+      router.replace(bibHref('/biblioteca'))
       router.refresh()
     })
   }
@@ -54,10 +55,10 @@ export function UserMenu({ user }: Props) {
         </button>
         {open && (
           <Menu>
-            <MenuLink href="/biblioteca/login" icon={<LogIn className="h-4 w-4" />}>
+            <MenuLink href={bibHref('/biblioteca/login')} icon={<LogIn className="h-4 w-4" />}>
               Iniciar sesión
             </MenuLink>
-            <MenuLink href="/biblioteca/registro" icon={<UserPlus className="h-4 w-4" />}>
+            <MenuLink href={bibHref('/biblioteca/registro')} icon={<UserPlus className="h-4 w-4" />}>
               Crear cuenta
             </MenuLink>
           </Menu>
