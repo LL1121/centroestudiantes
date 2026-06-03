@@ -6,8 +6,11 @@ Plataforma del Centro de Estudiantes "Unidos por el IES":
   y módulo `/biblioteca` (Biblioteca Digital).
 - **`backend/`** — FastAPI async + PostgreSQL/`pgvector`. Autenticación,
   almacenamiento de material e infraestructura RAG.
-- **`docker-compose.yml`** — Stack completo (db + backend + frontend) listo
-  para Cloudflare Tunnel.
+- **`docker-compose.yml`** — Stack completo (db + backend + frontend) sobre
+  la red externa compartida `lyntrix_network` (deploy del centro).
+- **`docker-compose.biblioteca.yml`** — Mismo stack pero **aislado**: red
+  default propia del compose, sin dependencias externas. Pensado para correr
+  la Biblioteca en su propio servidor.
 
 ## Quickstart (desarrollo local sin Docker)
 
@@ -153,6 +156,37 @@ Si eso funciona pero el dominio no, el tunnel apunta al contenedor equivocado.
   responder `{"status":"ok"}`.
 - `https://api.biblioteca.ies9018malargue.edu.ar/docs` — Swagger UI
   (podés protegerla luego con CF Access si querés).
+
+## Deploy AISLADO de la Biblioteca (servidor propio)
+
+Si la Biblioteca corre en su propio servidor, sin compartir red con otros
+stacks, usá `docker-compose.biblioteca.yml`. Este compose crea su red
+default y los servicios se resuelven por `container_name`
+(`biblioteca-postgres`, `biblioteca-backend`, `biblioteca-frontend`), con
+volúmenes propios (`biblioteca_pgdata`, `biblioteca_storage`).
+
+```bash
+cp .env.example .env   # editá JWT_SECRET, POSTGRES_PASSWORD, etc.
+docker compose -f docker-compose.biblioteca.yml up -d --build
+```
+
+| Servicio   | Hostname interno      | Puerto interno | Expuesto al host |
+| ---------- | --------------------- | -------------- | ---------------- |
+| `db`       | `biblioteca-postgres` | 5432           | no               |
+| `backend`  | `biblioteca-backend`  | 8000           | no               |
+| `frontend` | `biblioteca-frontend` | 3000           | `3005:3000`      |
+
+El frontend queda publicado en `http://<servidor>:3005`. Apuntá ahí tu
+Cloudflare Tunnel / reverse proxy (hostname
+`biblioteca.ies9018malargue.edu.ar`). Como el frontend pega al backend por
+proxies internos de Next.js, no hace falta exponer el puerto 8000.
+
+Para parar/actualizar solo este stack sin tocar el del centro:
+
+```bash
+docker compose -f docker-compose.biblioteca.yml down
+docker compose -f docker-compose.biblioteca.yml up -d --build
+```
 
 ### Notas operativas
 
