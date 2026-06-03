@@ -24,7 +24,7 @@ export default async function BibliotecaLayout({ children }: { children: ReactNo
     <BibliotecaThemeProvider initialTheme={initialTheme}>
       <div className="flex min-h-dvh flex-col pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] md:pb-0">
         <BibliotecaHeader user={user} />
-        <main className="flex-1">{children}</main>
+        <main className="flex flex-1 flex-col">{children}</main>
         <AiFab isGuest={user === null} />
         <BibliotecaMobileNav isGuest={user === null} />
         <BibliotecaToaster />

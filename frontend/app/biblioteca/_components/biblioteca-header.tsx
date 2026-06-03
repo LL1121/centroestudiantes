@@ -1,6 +1,5 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { BookOpen } from 'lucide-react'
 
 import { SITE_LOGO } from '@/lib/branding'
 import { bibHref } from '@/lib/biblioteca-path'
@@ -29,45 +28,11 @@ export function BibliotecaHeader({ user }: Props) {
           <span className="hidden text-sm font-semibold min-[400px]:inline">Biblioteca Digital</span>
         </Link>
 
-        <Link
-          href={bibHref('/biblioteca')}
-          className="ml-1 inline-flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-primary md:hidden"
-          aria-label="Materiales"
-        >
-          <BookOpen className="h-5 w-5" aria-hidden />
-        </Link>
-
-        <nav className="ml-2 hidden items-center gap-1 text-sm text-muted-foreground md:flex">
-          <NavLink href={bibHref('/biblioteca')} icon={<BookOpen className="h-4 w-4" />}>
-            Materiales
-          </NavLink>
-        </nav>
-
         <div className="ml-auto flex items-center gap-2">
           <ThemeToggle />
           <UserMenu user={user} />
         </div>
       </div>
     </header>
-  )
-}
-
-function NavLink({
-  href,
-  icon,
-  children,
-}: {
-  href: string
-  icon: React.ReactNode
-  children: React.ReactNode
-}) {
-  return (
-    <Link
-      href={href}
-      className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 transition-colors hover:bg-secondary/50 hover:text-navy"
-    >
-      {icon}
-      {children}
-    </Link>
   )
 }

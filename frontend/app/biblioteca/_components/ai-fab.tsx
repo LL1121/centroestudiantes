@@ -37,8 +37,9 @@ export function AiFab({ isGuest }: Props) {
         'bg-gradient-to-br from-primary to-celeste-light text-primary-foreground dark:from-primary dark:to-celeste',
         'hover:scale-105 hover:shadow-primary/40 active:scale-95',
         'h-14 w-14 justify-center md:h-auto md:w-auto md:px-5 md:py-3',
+        // En mobile lo dejamos arriba del nav inferior; en desktop (sin nav), abajo de todo.
+        'bottom-[max(5.25rem,calc(env(safe-area-inset-bottom,0px)+5.25rem))] md:bottom-6',
       )}
-      style={{ bottom: 'max(5.25rem, calc(env(safe-area-inset-bottom, 0px) + 5.25rem))' }}
     >
       <span
         className="pointer-events-none absolute inset-0 -z-10 rounded-full bg-primary/40 blur-md"
