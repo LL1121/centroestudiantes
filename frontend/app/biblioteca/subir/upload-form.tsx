@@ -5,29 +5,13 @@ import { useRouter } from 'next/navigation'
 import { useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 
-const ACCEPT = '.pdf,.epub,.jpg,.jpeg,.png'
-const ALLOWED_MIME = new Set([
-  'application/pdf',
-  'application/epub+zip',
-  'image/jpeg',
-  'image/png',
-])
-const MAX_BYTES = 50 * 1024 * 1024
-
-interface UploadResponse {
-  material: {
-    id: string
-    titulo: string
-    carrera: string
-    tipo_archivo: string
-    size_bytes: number
-  }
-  deduplicated: boolean
-}
-
-interface ApiErrorBody {
-  detail?: string
-}
+import {
+  ACCEPT,
+  ALLOWED_MIME,
+  MAX_BYTES,
+  type ApiErrorBody,
+  type UploadResponse,
+} from './upload-shared'
 
 export function UploadForm() {
   const router = useRouter()

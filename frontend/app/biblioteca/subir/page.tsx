@@ -4,7 +4,7 @@ import { ChevronLeft } from 'lucide-react'
 
 import { getOptionalUser } from '@/lib/api/auth'
 
-import { UploadForm } from './upload-form'
+import { SubirTabs } from './subir-tabs'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,7 +36,7 @@ export default async function SubirPage() {
       </div>
 
       <div className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-7">
-        <UploadForm />
+        <SubirTabs />
       </div>
     </div>
   )
