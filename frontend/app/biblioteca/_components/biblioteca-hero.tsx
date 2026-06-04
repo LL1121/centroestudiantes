@@ -43,7 +43,7 @@ export function BibliotecaHero({ materials, totalTags, user }: Props) {
               <Sparkles className="h-3 w-3" aria-hidden />
               Biblioteca Digital
             </p>
-            <h1 className="mt-3 font-serif text-3xl font-bold leading-tight text-navy sm:text-4xl">
+            <h1 className="mt-3 font-serif text-3xl font-semibold tracking-tight leading-tight text-navy sm:text-4xl sm:tracking-tighter">
               {user
                 ? `Hola, ${user.full_name.split(' ')[0]}.`
                 : 'Apuntes, libros y guías.'}

@@ -11,7 +11,7 @@ from app.models.embedding import Embedding
 from app.models.material import Material, MaterialStatus
 from app.services.embeddings import get_embedding_client
 
-_FAILED = (MaterialStatus.failed,)
+_PUBLIC = (MaterialStatus.active, MaterialStatus.indexed)
 
 
 @dataclass(slots=True, frozen=True)
@@ -50,7 +50,7 @@ async def search_materials(
                 material=material, relevance=relevance, match_kind=kind
             )
 
-    base = select(Material).where(Material.status.not_in(_FAILED))
+    base = select(Material).where(Material.status.in_(_PUBLIC))
 
     if carrera and carrera.strip():
         carrera_val = carrera.strip()
@@ -109,7 +109,7 @@ async def search_materials(
             score_expr = func.greatest(sim_titulo, sim_desc, sim_carrera).label("fuzzy_score")
             fuzzy_stmt = (
                 select(Material, score_expr)
-                .where(Material.status.not_in(_FAILED))
+                .where(Material.status.in_(_PUBLIC))
                 .where(score_expr > threshold)
                 .order_by(score_expr.desc())
                 .limit(limit)
@@ -135,7 +135,7 @@ async def search_materials(
                 semantic_stmt = (
                     select(Material, ranked.c.best_distance)
                     .join(ranked, Material.id == ranked.c.material_id)
-                    .where(Material.status.not_in(_FAILED))
+                    .where(Material.status.in_(_PUBLIC))
                     .order_by(ranked.c.best_distance)
                     .limit(limit)
                 )

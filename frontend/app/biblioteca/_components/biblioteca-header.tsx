@@ -15,7 +15,7 @@ interface Props {
 export function BibliotecaHeader({ user }: Props) {
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-card/85 backdrop-blur supports-[backdrop-filter]:bg-card/70">
-      <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-3 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-14 w-full max-w-[90rem] items-center gap-3 px-4 sm:px-6 lg:px-8">
         <Link href={bibHref('/biblioteca')} className="flex items-center gap-2 text-navy">
           <Image
             src={SITE_LOGO}

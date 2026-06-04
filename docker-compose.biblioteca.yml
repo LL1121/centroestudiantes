@@ -95,6 +95,15 @@ services:
       LLM_MAX_TOKENS: ${LLM_MAX_TOKENS:-600}
       LLM_TOP_K: ${LLM_TOP_K:-5}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
+
+      MODERATION_ENABLED: ${MODERATION_ENABLED:-true}
+      MODERATION_MAX_PAGES: ${MODERATION_MAX_PAGES:-20}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-https://biblioteca.ies9018malargue.edu.ar}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
     volumes:
       - biblioteca_storage:/app/var/storage
 

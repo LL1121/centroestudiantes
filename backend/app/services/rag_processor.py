@@ -36,6 +36,7 @@ from app.db.session import SessionFactory
 from app.models.embedding import Embedding
 from app.models.material import Material, MaterialStatus
 from app.services.embeddings import get_embedding_client
+from app.services.moderation import moderate_file_at_path
 from app.services.storage import get_storage
 
 logger = logging.getLogger(__name__)
@@ -208,7 +209,7 @@ async def _set_status(material_id: UUID, status: MaterialStatus) -> None:
         await session.commit()
 
 
-async def process_material_pipeline(material_id: UUID) -> None:
+async def process_material_pipeline(material_id: UUID, *, skip_moderation: bool = False) -> None:
     """
     Orquesta extracción + chunking + embeddings + persistencia para `material_id`.
 
@@ -236,6 +237,22 @@ async def process_material_pipeline(material_id: UUID) -> None:
         await session.commit()
 
     try:
+        storage = get_storage()
+        abs_path = storage.absolute_path(snapshot["storage_key"])
+        if not skip_moderation:
+            verdict = await moderate_file_at_path(abs_path, snapshot["mime_type"])
+        else:
+            verdict = None
+        if verdict is not None and verdict.flagged:
+            logger.warning(
+                "Material %s en cuarentena: %s (%s)",
+                material_id,
+                verdict.reason,
+                verdict.categories,
+            )
+            await _set_status(material_id, MaterialStatus.quarantined)
+            return
+
         text = await extract_text_from_storage(snapshot["storage_key"], snapshot["mime_type"])
         chunks = chunk_text(text, chunk_size=settings.chunk_size, chunk_overlap=settings.chunk_overlap)
         if not chunks:

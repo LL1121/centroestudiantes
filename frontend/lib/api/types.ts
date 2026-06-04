@@ -6,6 +6,7 @@ export interface UserRead {
   full_name: string
   role: UserRole
   is_active: boolean
+  email_verified: boolean
   created_at: string
   last_login_at: string | null
 }
@@ -25,6 +26,7 @@ export type MaterialStatus =
   | 'processing'
   | 'active'
   | 'indexed'
+  | 'quarantined'
   | 'failed'
 
 export type TipoArchivo = 'pdf' | 'epub' | 'jpeg' | 'png'

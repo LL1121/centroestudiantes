@@ -3,16 +3,25 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from app.core.password_policy import validate_password_strength
 from app.models.user import UserRole
 
 
 class UserCreate(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=8, max_length=128)
+    password: str = Field(min_length=10, max_length=128)
     full_name: str = Field(min_length=2, max_length=255)
     role: UserRole = UserRole.alumno
+
+    @field_validator("password")
+    @classmethod
+    def password_strength(cls, value: str) -> str:
+        error = validate_password_strength(value)
+        if error:
+            raise ValueError(error)
+        return value
 
 
 class UserRead(BaseModel):
@@ -23,5 +32,6 @@ class UserRead(BaseModel):
     full_name: str
     role: UserRole
     is_active: bool
+    email_verified: bool
     created_at: datetime
     last_login_at: datetime | None

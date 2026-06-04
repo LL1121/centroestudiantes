@@ -16,9 +16,11 @@ chat se respeta la consigna de mantenerlo en `llm_chat.py`):
 """
 from __future__ import annotations
 
+import json
 import logging
 import re
 from dataclasses import dataclass
+from collections.abc import AsyncIterator
 from typing import Literal, Protocol, runtime_checkable
 from uuid import UUID
 
@@ -211,13 +213,15 @@ class LLMClient(Protocol):
         self, *, system: str, user: str, max_tokens: int, temperature: float
     ) -> str: ...
 
+    async def stream(
+        self, *, system: str, user: str, max_tokens: int, temperature: float
+    ) -> AsyncIterator[str]: ...
+
 
 class FakeChatLLM:
     """Backend de desarrollo: no llama a ninguna API externa."""
 
-    async def complete(self, *, system: str, user: str, max_tokens: int, temperature: float) -> str:
-        del system, max_tokens, temperature
-        # Devolvemos un eco con el contexto para verificar el RAG sin gastar tokens.
+    def _fake_answer(self, user: str) -> str:
         ctx = ""
         if "Contexto recuperado:" in user:
             ctx_block = user.split("Contexto recuperado:", 1)[1]
@@ -229,6 +233,18 @@ class FakeChatLLM:
             f"{ctx or '(sin contexto)'}\n\n"
             "Para respuestas reales configurá LLM_BACKEND=openai o groq con su API key."
         )
+
+    async def complete(self, *, system: str, user: str, max_tokens: int, temperature: float) -> str:
+        del system, max_tokens, temperature
+        return self._fake_answer(user)
+
+    async def stream(
+        self, *, system: str, user: str, max_tokens: int, temperature: float
+    ) -> AsyncIterator[str]:
+        del system, max_tokens, temperature
+        text = self._fake_answer(user)
+        for word in text.split(" "):
+            yield word + " "
 
 
 class OpenAICompatibleChat:
@@ -263,6 +279,41 @@ class OpenAICompatibleChat:
             response.raise_for_status()
             data = response.json()
         return str(data["choices"][0]["message"]["content"]).strip()
+
+    async def stream(
+        self, *, system: str, user: str, max_tokens: int, temperature: float
+    ) -> AsyncIterator[str]:
+        payload: dict[str, object] = {
+            "model": self._model,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": True,
+        }
+        async with httpx.AsyncClient(timeout=httpx.Timeout(120.0)) as client:
+            async with client.stream(
+                "POST",
+                f"{self._base_url}/chat/completions",
+                headers={"Authorization": f"Bearer {self._api_key}"},
+                json=payload,
+            ) as response:
+                response.raise_for_status()
+                async for line in response.aiter_lines():
+                    if not line.startswith("data: "):
+                        continue
+                    data = line[6:].strip()
+                    if data == "[DONE]":
+                        break
+                    try:
+                        chunk = json.loads(data)
+                        delta = chunk["choices"][0]["delta"].get("content") or ""
+                    except (KeyError, json.JSONDecodeError):
+                        continue
+                    if delta:
+                        yield delta
 
 
 def get_llm_client() -> LLMClient:

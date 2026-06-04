@@ -68,8 +68,21 @@ export function ChatShell({ initialMaterialId, materialTitulo }: Props) {
     setMessages((prev) => [...prev, userMsg])
     setDraft('')
 
+    const assistantId = crypto.randomUUID()
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: assistantId,
+        role: 'assistant',
+        content: '',
+        blocked: false,
+        sources: [],
+        focus,
+      },
+    ])
+
     start(async () => {
-      const response = await fetch('/api/chat/ask', {
+      const response = await fetch('/api/chat/ask/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -79,35 +92,81 @@ export function ChatShell({ initialMaterialId, materialTitulo }: Props) {
         }),
       })
 
-      if (!response.ok) {
+      if (!response.ok || !response.body) {
         const body = (await response.json().catch(() => ({}))) as ApiError
         toast.error(body.detail ?? 'No pudimos hablar con el asistente.')
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            content: body.detail ?? 'Hubo un error procesando tu consulta.',
-            blocked: false,
-            sources: [],
-            focus,
-          },
-        ])
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId && m.role === 'assistant'
+              ? { ...m, content: body.detail ?? 'Hubo un error.' }
+              : m,
+          ),
+        )
         return
       }
 
-      const data = (await response.json()) as AskResponse
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          content: data.answer,
-          blocked: data.blocked,
-          sources: data.sources,
-          focus: data.focus,
-        },
-      ])
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let accumulated = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const parts = buffer.split('\n\n')
+        buffer = parts.pop() ?? ''
+
+        for (const part of parts) {
+          const lines = part.split('\n')
+          let event = 'message'
+          let dataLine = ''
+          for (const line of lines) {
+            if (line.startsWith('event: ')) event = line.slice(7).trim()
+            if (line.startsWith('data: ')) dataLine = line.slice(6)
+          }
+          if (!dataLine) continue
+
+          try {
+            const payload = JSON.parse(dataLine) as Record<string, unknown>
+            if (event === 'token' && typeof payload.delta === 'string') {
+              accumulated += payload.delta
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantId && m.role === 'assistant'
+                    ? { ...m, content: accumulated }
+                    : m,
+                ),
+              )
+            }
+            if (event === 'done') {
+              const donePayload = payload as unknown as AskResponse
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantId && m.role === 'assistant'
+                    ? {
+                        ...m,
+                        content: donePayload.blocked
+                          ? donePayload.answer
+                          : accumulated || donePayload.answer,
+                        blocked: donePayload.blocked,
+                        sources: donePayload.sources ?? [],
+                        focus: donePayload.focus ?? focus,
+                      }
+                    : m,
+                ),
+              )
+            }
+            if (event === 'error') {
+              const detail =
+                typeof payload.detail === 'string' ? payload.detail : 'Error del asistente'
+              toast.error(detail)
+            }
+          } catch {
+            /* ignore malformed SSE chunk */
+          }
+        }
+      }
     })
   }
 

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import uuid
 from datetime import UTC, datetime, timedelta
-from typing import Literal, TypedDict
+from typing import Literal, NotRequired, TypedDict
 from uuid import UUID
 
 import bcrypt
@@ -11,6 +12,9 @@ from app.core.config import get_settings
 
 TokenType = Literal["access", "refresh"]
 
+# Hash bcrypt fijo para timing constante cuando el email no existe.
+DUMMY_PASSWORD_HASH = bcrypt.hashpw(b"timing-safe-dummy", bcrypt.gensalt()).decode("utf-8")
+
 
 class TokenPayload(TypedDict):
     sub: str
@@ -18,6 +22,7 @@ class TokenPayload(TypedDict):
     type: TokenType
     iat: int
     exp: int
+    jti: NotRequired[str]
 
 
 def hash_password(password: str) -> str:
@@ -39,7 +44,13 @@ def _expiry(token_type: TokenType) -> datetime:
     return now + timedelta(days=settings.refresh_token_expire_days)
 
 
-def create_token(*, user_id: UUID, role: str, token_type: TokenType) -> str:
+def create_token(
+    *,
+    user_id: UUID,
+    role: str,
+    token_type: TokenType,
+    jti: str | None = None,
+) -> str:
     settings = get_settings()
     now = datetime.now(tz=UTC)
     payload: TokenPayload = {
@@ -49,6 +60,8 @@ def create_token(*, user_id: UUID, role: str, token_type: TokenType) -> str:
         "iat": int(now.timestamp()),
         "exp": int(_expiry(token_type).timestamp()),
     }
+    if token_type == "refresh":
+        payload["jti"] = jti or str(uuid.uuid4())
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 

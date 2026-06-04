@@ -81,7 +81,7 @@
 
 @theme inline {
   --font-sans: 'Inter', 'Inter Fallback', system-ui, sans-serif;
-  --font-serif: 'Playfair Display', 'Playfair Display Fallback', Georgia, serif;
+  --font-serif: 'Space Grotesk', 'Space Grotesk Fallback', system-ui, sans-serif;
   --font-mono: 'Geist Mono', 'Geist Mono Fallback', monospace;
   
   --color-background: var(--background);

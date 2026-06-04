@@ -85,7 +85,7 @@ export default async function BibliotecaHome({ searchParams }: PageProps) {
   )
 
   return (
-    <div className="mx-auto max-w-6xl px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
+    <div className="mx-auto max-w-[90rem] px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
       <MaterialsAutoRefresh active={hasProcessing} />
       <BibliotecaHero materials={heroSource} totalTags={suggestedTags.length} user={user} />
 
@@ -107,7 +107,7 @@ export default async function BibliotecaHome({ searchParams }: PageProps) {
               {materials.length} {materials.length === 1 ? 'material' : 'materiales'}
             </p>
           </div>
-          <ul className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {materials.map((material) => (
               <MaterialCard
                 key={material.id}

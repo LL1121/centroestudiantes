@@ -355,7 +355,10 @@ async def stream_material_file(
     `Range:` requests (PDF.js los necesita para PDFs grandes).
     """
     material = await session.get(Material, material_id)
-    if material is None or material.status == MaterialStatus.failed:
+    if material is None or material.status not in (
+        MaterialStatus.active,
+        MaterialStatus.indexed,
+    ):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Material no disponible.")
 
     storage = get_storage()

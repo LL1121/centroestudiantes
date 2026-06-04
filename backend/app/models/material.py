@@ -22,6 +22,7 @@ class MaterialStatus(str, enum.Enum):
     processing = "processing"
     active = "active"
     indexed = "indexed"  # legado pre-Etapa3; tratar como `active`
+    quarantined = "quarantined"
     failed = "failed"
 
 

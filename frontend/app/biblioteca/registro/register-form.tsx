@@ -2,9 +2,10 @@
 
 import { Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { use, useState, useTransition } from 'react'
+import { use, useMemo, useState, useTransition } from 'react'
 
 import { bibHref } from '@/lib/biblioteca-path'
+import { passwordScore, passwordStrengthMessage } from '@/lib/password-policy'
 
 interface Props {
   searchParamsPromise: Promise<{ redirect?: string }>
@@ -20,14 +21,15 @@ export function RegisterForm({ searchParamsPromise }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [pending, start] = useTransition()
 
+  const strengthMsg = useMemo(() => passwordStrengthMessage(password), [password])
+  const score = useMemo(() => passwordScore(password), [password])
   const passwordsMatch = password === confirm
-  const passwordValid = password.length >= 8
 
   const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError(null)
-    if (!passwordValid) {
-      setError('La contraseña debe tener al menos 8 caracteres.')
+    if (strengthMsg) {
+      setError(strengthMsg)
       return
     }
     if (!passwordsMatch) {
@@ -72,15 +74,28 @@ export function RegisterForm({ searchParamsPromise }: Props) {
         disabled={pending}
         required
       />
-      <Field
-        label="Contraseña (mín. 8)"
-        type="password"
-        autoComplete="new-password"
-        value={password}
-        onChange={setPassword}
-        disabled={pending}
-        required
-      />
+      <div>
+        <Field
+          label="Contraseña (mín. 10, mayús, minús, número)"
+          type="password"
+          autoComplete="new-password"
+          value={password}
+          onChange={setPassword}
+          disabled={pending}
+          required
+        />
+        <div className="mt-2 flex gap-1">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <span
+              key={i}
+              className={`h-1 flex-1 rounded-full ${i < score ? 'bg-primary' : 'bg-muted'}`}
+            />
+          ))}
+        </div>
+        {strengthMsg && password.length > 0 && (
+          <p className="mt-1 text-[11px] text-destructive">{strengthMsg}</p>
+        )}
+      </div>
       <Field
         label="Repetir contraseña"
         type="password"
@@ -100,7 +115,7 @@ export function RegisterForm({ searchParamsPromise }: Props) {
       )}
       <button
         type="submit"
-        disabled={pending || !email || !fullName || !password || !confirm}
+        disabled={pending || !email || !fullName || !password || !confirm || Boolean(strengthMsg)}
         className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
       >
         {pending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}

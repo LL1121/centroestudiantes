@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, Playfair_Display } from 'next/font/google'
+import { Inter, Space_Grotesk } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { SmoothScroll } from '@/components/smooth-scroll'
 import { SITE_LOGO } from '@/lib/branding'
@@ -11,9 +11,9 @@ const inter = Inter({
   display: 'swap',
 })
 
-const playfair = Playfair_Display({ 
-  subsets: ["latin"],
-  variable: '--font-playfair',
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-display',
   display: 'swap',
 })
 
@@ -47,7 +47,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es" className={`${inter.variable} ${playfair.variable} bg-background`}>
+    <html lang="es" className={`${inter.variable} ${spaceGrotesk.variable} bg-background`}>
       <body className="font-sans antialiased overflow-x-hidden">
         <SmoothScroll />
         {children}

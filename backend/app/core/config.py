@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     postgres_port: int = 5432
     postgres_db: str = "centro"
 
-    jwt_secret: str = Field(min_length=16)
+    jwt_secret: str = Field(min_length=32)
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 14
@@ -76,6 +76,32 @@ class Settings(BaseSettings):
     llm_max_tokens: int = 600
     llm_top_k: int = 5
     groq_api_key: str | None = None
+
+    # Moderación de contenido (OpenAI omni-moderation)
+    moderation_enabled: bool = True
+    moderation_max_pages: int = 20
+    moderation_text_threshold: float = 0.5
+    moderation_image_threshold: float = 0.5
+    moderation_domain_blocklist: str = "pornhub.com,xvideos.com,redtube.com"
+
+    # Email (verificación y reset; opcional si SMTP_HOST vacío)
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    smtp_from: str | None = None
+    smtp_use_tls: bool = True
+    public_app_url: str = "http://localhost:3000"
+    email_verify_expire_hours: int = 24
+    password_reset_expire_hours: int = 2
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_env.lower() in {"production", "prod"}
+
+    @property
+    def moderation_blocklist_domains(self) -> list[str]:
+        return [d.strip().lower() for d in self.moderation_domain_blocklist.split(",") if d.strip()]
 
     @model_validator(mode="after")
     def resolve_database_url(self) -> Settings:

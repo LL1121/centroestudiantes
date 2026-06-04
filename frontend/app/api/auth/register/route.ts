@@ -9,6 +9,7 @@ import {
   REFRESH_MAX_AGE,
 } from '@/lib/api/config'
 import { accessCookieOptions, refreshCookieOptions } from '@/lib/api/cookies'
+import { passwordStrengthMessage } from '@/lib/password-policy'
 import type { ApiError, TokenPair } from '@/lib/api/types'
 
 interface RegisterBody {
@@ -35,11 +36,9 @@ export async function POST(request: Request) {
       { status: 400 },
     )
   }
-  if (password.length < 8) {
-    return NextResponse.json(
-      { detail: 'La contraseña debe tener al menos 8 caracteres' },
-      { status: 400 },
-    )
+  const pwdError = passwordStrengthMessage(password)
+  if (pwdError) {
+    return NextResponse.json({ detail: pwdError }, { status: 400 })
   }
 
   const registerRes = await fetch(`${BACKEND_URL}/api/v1/auth/register`, {

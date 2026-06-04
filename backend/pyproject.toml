@@ -23,6 +23,7 @@ dependencies = [
   "pytesseract>=0.3.10",
   "Pillow>=10.0",
   "pdf2image>=1.17",
+  "slowapi>=0.1.9",
 ]
 
 [project.optional-dependencies]
@@ -36,6 +37,7 @@ dev = [
 [project.scripts]
 create-admin = "app.scripts.create_admin:main"
 create-user = "app.scripts.create_user:main"
+reindex-materials = "app.scripts.reindex_materials:main"
 
 [tool.ruff]
 line-length = 100
