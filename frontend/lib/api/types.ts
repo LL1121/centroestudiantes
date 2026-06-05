@@ -40,7 +40,7 @@ export interface MaterialRead {
   editorial: string | null
   isbn: string | null
   ciudad_publicacion: string | null
-  carrera: string
+  carrera: string | null
   tags: string[]
   tipo_archivo: TipoArchivo
   mime_type: string

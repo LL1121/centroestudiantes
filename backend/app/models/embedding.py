@@ -33,7 +33,7 @@ class Embedding(Base, UUIDMixin):
     vector: Mapped[list[float]] = mapped_column(Vector(_settings.embedding_dim), nullable=False)
 
     tipo: Mapped[str] = mapped_column(String(50), nullable=False)
-    carrera: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    carrera: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     fecha_creacion: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

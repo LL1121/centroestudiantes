@@ -3,6 +3,7 @@ import { BookOpen } from 'lucide-react'
 
 import type { MaterialSearchRead } from '@/lib/api/types'
 import { bibHref } from '@/lib/biblioteca-path'
+import { materialCarreraLabel } from '@/lib/material-labels'
 
 import { MaterialTags } from './material-tags'
 import { MaterialThumbnail } from './material-thumbnail'
@@ -52,7 +53,7 @@ function SimilarCard({ material }: { material: MaterialSearchRead }) {
           <h3 className="line-clamp-2 font-serif text-sm font-bold leading-snug text-navy">
             {material.titulo}
           </h3>
-          <p className="text-[11px] text-muted-foreground">{material.carrera}</p>
+          <p className="text-[11px] text-muted-foreground">{materialCarreraLabel(material.carrera)}</p>
           <MaterialTags tags={material.tags ?? []} className="mt-0" />
           {ready ? (
             <Link

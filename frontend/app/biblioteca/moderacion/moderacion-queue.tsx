@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 
 import type { MaterialRead } from '@/lib/api/types'
+import { materialCarreraLabel } from '@/lib/material-labels'
 
 export function ModeracionQueue() {
   const router = useRouter()
@@ -71,7 +72,7 @@ export function ModeracionQueue() {
           <div>
             <h2 className="font-serif text-base font-semibold text-navy">{m.titulo}</h2>
             <p className="text-xs text-muted-foreground">
-              {m.carrera} · {m.tipo_archivo.toUpperCase()} · {m.status}
+              {materialCarreraLabel(m.carrera)} · {m.tipo_archivo.toUpperCase()} · {m.status}
             </p>
           </div>
           <div className="flex gap-2">

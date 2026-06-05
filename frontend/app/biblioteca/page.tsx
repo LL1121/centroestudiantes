@@ -6,9 +6,11 @@ import { getOptionalUser } from '@/lib/api/auth'
 import { serverFetch } from '@/lib/api/server'
 import type { MaterialRead, MaterialSearchRead, UserRead } from '@/lib/api/types'
 import { bibHref } from '@/lib/biblioteca-path'
+import { materialCarreraLabel } from '@/lib/material-labels'
 
 import { BibliotecaHero } from './_components/biblioteca-hero'
 import { DeleteMaterialButton } from './_components/delete-material-button'
+import { EditMaterialLink } from './_components/edit-material-link'
 import { MaterialsAutoRefresh } from './_components/materials-auto-refresh'
 import { matchKindLabel, MaterialTags } from './_components/material-tags'
 import { MaterialThumbnail } from './_components/material-thumbnail'
@@ -61,7 +63,7 @@ async function loadSuggestedTags(): Promise<string[]> {
   }
 }
 
-function canDelete(user: UserRead | null, material: MaterialRead): boolean {
+function canModify(user: UserRead | null, material: MaterialRead): boolean {
   if (!user) return false
   if (user.role === 'admin') return true
   return material.uploader_id === user.id
@@ -113,7 +115,7 @@ export default async function BibliotecaHome({ searchParams }: PageProps) {
                 key={material.id}
                 material={material}
                 isGuest={isGuest}
-                canDelete={canDelete(user, material)}
+                canModify={canModify(user, material)}
               />
             ))}
           </ul>
@@ -152,11 +154,11 @@ function EmptyState({ hasSearch, isGuest }: { hasSearch: boolean; isGuest: boole
 function MaterialCard({
   material,
   isGuest,
-  canDelete: showDelete,
+  canModify: showModify,
 }: {
   material: MaterialSearchRead
   isGuest: boolean
-  canDelete: boolean
+  canModify: boolean
 }) {
   const ready = material.status === 'active' || material.status === 'indexed'
   const asistenteHref = `${bibHref('/biblioteca/asistente')}?material_id=${encodeURIComponent(material.id)}&titulo=${encodeURIComponent(material.titulo)}`
@@ -179,8 +181,9 @@ function MaterialCard({
             </span>
           )}
         </div>
-        {showDelete && (
-          <div className="absolute left-4 top-4">
+        {showModify && (
+          <div className="absolute left-4 top-4 flex items-center gap-0.5">
+            <EditMaterialLink materialId={material.id} titulo={material.titulo} />
             <DeleteMaterialButton materialId={material.id} titulo={material.titulo} />
           </div>
         )}
@@ -192,7 +195,7 @@ function MaterialCard({
             {material.titulo}
           </h3>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {material.carrera} · {material.tipo_archivo.toUpperCase()} · {formatBytes(material.size_bytes)}
+            {materialCarreraLabel(material.carrera)} · {material.tipo_archivo.toUpperCase()} · {formatBytes(material.size_bytes)}
           </p>
         </div>
 
@@ -241,6 +244,7 @@ function StatusBadge({ status }: { status: MaterialSearchRead['status'] }) {
     processing: 'bg-primary/90 text-primary-foreground',
     active: 'bg-emerald-600/90 text-white',
     indexed: 'bg-emerald-600/90 text-white',
+    quarantined: 'bg-amber-600/90 text-white',
     failed: 'bg-destructive/90 text-white',
   }
   return (
@@ -258,6 +262,7 @@ function statusLabel(status: MaterialSearchRead['status']): string {
     processing: 'Procesando',
     active: 'Listo',
     indexed: 'Listo',
+    quarantined: 'En revisión',
     failed: 'Error',
   }
   return labels[status]
@@ -269,6 +274,7 @@ function statusHint(status: MaterialSearchRead['status']): string {
     processing: 'Procesando archivo…',
     active: '',
     indexed: '',
+    quarantined: 'Material en revisión de moderación.',
     failed: 'No se pudo procesar este archivo.',
   }
   return hints[status]

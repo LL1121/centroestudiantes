@@ -27,3 +27,10 @@ def parse_tags(raw: str | None) -> list[str]:
         if len(parts) >= _MAX_TAGS:
             break
     return parts
+
+
+def normalize_tags_list(tags: list[str] | None) -> list[str] | None:
+    """Normaliza una lista de tags (p. ej. desde JSON en PATCH)."""
+    if tags is None:
+        return None
+    return parse_tags(",".join(tags))

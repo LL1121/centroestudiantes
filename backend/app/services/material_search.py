@@ -91,7 +91,7 @@ async def search_materials(
         for row in rows:
             titulo_match = query.lower() in row.titulo.lower()
             tag_match = any(query.lower() in t for t in (row.tags or []))
-            carrera_match = query.lower() in row.carrera.lower()
+            carrera_match = bool(row.carrera and query.lower() in row.carrera.lower())
             if titulo_match:
                 _upsert(row, 0.95, "title")
             elif tag_match:
@@ -105,7 +105,7 @@ async def search_materials(
             threshold = settings.fuzzy_threshold
             sim_titulo = func.similarity(Material.titulo, query)
             sim_desc = func.similarity(func.coalesce(Material.descripcion, ""), query)
-            sim_carrera = func.similarity(Material.carrera, query)
+            sim_carrera = func.similarity(func.coalesce(Material.carrera, ""), query)
             score_expr = func.greatest(sim_titulo, sim_desc, sim_carrera).label("fuzzy_score")
             fuzzy_stmt = (
                 select(Material, score_expr)

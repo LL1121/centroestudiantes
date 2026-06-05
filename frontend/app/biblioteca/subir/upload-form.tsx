@@ -55,15 +55,20 @@ export function UploadForm() {
       toast.error('Adjuntá un archivo antes de continuar.')
       return
     }
-    if (titulo.trim().length < 2 || carrera.trim().length < 2) {
-      toast.error('Completá título y carrera (mínimo 2 caracteres).')
+    if (titulo.trim().length < 2) {
+      toast.error('Completá el título (mínimo 2 caracteres).')
+      return
+    }
+    const carreraTrim = carrera.trim()
+    if (carreraTrim.length === 1) {
+      toast.error('La carrera debe tener al menos 2 caracteres o quedar vacía.')
       return
     }
 
     const data = new FormData()
     data.append('file', file)
     data.append('titulo', titulo.trim())
-    data.append('carrera', carrera.trim())
+    if (carreraTrim) data.append('carrera', carreraTrim)
     if (descripcion.trim()) data.append('descripcion', descripcion.trim())
     if (tags.trim()) data.append('tags', tags.trim())
     if (autor.trim()) data.append('autor', autor.trim())
@@ -114,12 +119,11 @@ export function UploadForm() {
         placeholder="Apuntes Matemática I"
       />
       <Field
-        label="Carrera"
+        label="Carrera / materia (opcional)"
         value={carrera}
         onChange={setCarrera}
         disabled={pending}
-        required
-        placeholder="Profesorado en Ciencias de la Educación"
+        placeholder="Dejalo vacío si es lectura general"
       />
       <Field
         label="Descripción (opcional)"

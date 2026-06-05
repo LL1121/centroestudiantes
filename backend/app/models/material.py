@@ -36,7 +36,7 @@ class Material(Base, UUIDMixin, TimestampMixin):
     editorial: Mapped[str | None] = mapped_column(String(255), nullable=True)
     isbn: Mapped[str | None] = mapped_column(String(32), nullable=True)
     ciudad_publicacion: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    carrera: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
+    carrera: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     tags: Mapped[list[str]] = mapped_column(
         ARRAY(String(50)),
         nullable=False,

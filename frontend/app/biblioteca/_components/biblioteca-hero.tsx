@@ -12,7 +12,9 @@ interface Props {
 
 export function BibliotecaHero({ materials, totalTags, user }: Props) {
   const total = materials.length
-  const carrerasUnicas = new Set(materials.map((m) => m.carrera.trim().toLowerCase()).filter(Boolean)).size
+  const carrerasUnicas = new Set(
+    materials.map((m) => m.carrera?.trim().toLowerCase()).filter(Boolean),
+  ).size
   const recientes = materials.filter((m) => {
     const created = new Date(m.created_at).getTime()
     const dias = (Date.now() - created) / (1000 * 60 * 60 * 24)

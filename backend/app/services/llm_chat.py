@@ -153,7 +153,7 @@ async def search_context(
         ChunkResult(
             material_id=emb.material_id,
             titulo=titulo,
-            carrera=emb.carrera,
+            carrera=emb.carrera or "",
             chunk_idx=emb.chunk_idx,
             content=emb.content,
             distance=float(dist),

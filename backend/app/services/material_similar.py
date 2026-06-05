@@ -10,9 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.embedding import Embedding
 from app.models.material import Material, MaterialStatus
-from app.services.material_search import MaterialSearchHit
-
-_FAILED = (MaterialStatus.failed,)
+from app.services.material_search import MaterialSearchHit, _PUBLIC
 
 
 def _compute_centroid(vectors: list[list[float]]) -> list[float]:
@@ -37,6 +35,10 @@ def _vector_to_list(vec: object) -> list[float]:
     return [float(x) for x in list(vec)]  # type: ignore[arg-type]
 
 
+def _carrera_key(value: str | None) -> str:
+    return (value or "").strip().lower()
+
+
 async def find_similar_materials(
     session: AsyncSession,
     material_id: UUID,
@@ -46,7 +48,7 @@ async def find_similar_materials(
     """Devuelve materiales similares al indicado (excluye el propio)."""
     limit = max(1, min(limit, 20))
     source = await session.get(Material, material_id)
-    if source is None or source.status in _FAILED:
+    if source is None or source.status not in _PUBLIC:
         return []
 
     vec_rows = (
@@ -71,19 +73,20 @@ async def find_similar_materials(
         await session.execute(
             select(Material, ranked.c.best_distance)
             .join(ranked, Material.id == ranked.c.material_id)
-            .where(Material.status.not_in(_FAILED))
+            .where(Material.status.in_(_PUBLIC))
             .order_by(ranked.c.best_distance)
             .limit(limit * 3)
         )
     ).all()
 
     source_tags = set(source.tags or [])
+    source_carrera = _carrera_key(source.carrera)
     scored: list[MaterialSearchHit] = []
     for material, dist in rows:
         if material.id == material_id:
             continue
         score = max(0.35, 0.92 - float(dist) * 0.35)
-        if material.carrera.strip().lower() == source.carrera.strip().lower():
+        if source_carrera and _carrera_key(material.carrera) == source_carrera:
             score += 0.10
         shared = len(source_tags & set(material.tags or []))
         score += min(0.15, shared * 0.05)
@@ -99,18 +102,20 @@ async def _fallback_by_metadata(
     limit: int,
 ) -> list[MaterialSearchHit]:
     """Sin embeddings indexados: misma carrera y tags compartidos."""
-    rows = (
-        await session.scalars(
-            select(Material)
-            .where(
-                Material.id != source.id,
-                Material.status.not_in(_FAILED),
-                Material.carrera.ilike(source.carrera),
-            )
-            .order_by(Material.created_at.desc())
-            .limit(limit * 2)
+    stmt = (
+        select(Material)
+        .where(
+            Material.id != source.id,
+            Material.status.in_(_PUBLIC),
         )
-    ).all()
+        .order_by(Material.created_at.desc())
+        .limit(limit * 2)
+    )
+    source_carrera = (source.carrera or "").strip()
+    if source_carrera:
+        stmt = stmt.where(Material.carrera.ilike(source_carrera))
+
+    rows = (await session.scalars(stmt)).all()
     source_tags = set(source.tags or [])
     hits: list[MaterialSearchHit] = []
     for mat in rows:

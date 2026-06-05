@@ -113,7 +113,7 @@ export function BulkUploadForm() {
     const data = new FormData()
     data.append('file', item.file)
     data.append('titulo', item.titulo.trim() || titleFromFilename(item.file.name))
-    data.append('carrera', carrera.trim())
+    if (carrera.trim()) data.append('carrera', carrera.trim())
     if (tags.trim()) data.append('tags', tags.trim())
 
     try {
@@ -135,8 +135,9 @@ export function BulkUploadForm() {
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (running) return
-    if (carrera.trim().length < 2) {
-      toast.error('Completá la carrera (mínimo 2 caracteres).')
+    const carreraTrim = carrera.trim()
+    if (carreraTrim.length === 1) {
+      toast.error('La carrera debe tener al menos 2 caracteres o quedar vacía.')
       return
     }
     const pending = items.filter((it) => it.status === 'queued' || it.status === 'error')
@@ -182,14 +183,13 @@ export function BulkUploadForm() {
   return (
     <form className="space-y-5" onSubmit={onSubmit} noValidate>
       <label className="block">
-        <span className="mb-1 block text-xs font-medium text-navy">Carrera (para todos)</span>
+        <span className="mb-1 block text-xs font-medium text-navy">Carrera / materia (opcional, para todos)</span>
         <input
           type="text"
           value={carrera}
           onChange={(e) => setCarrera(e.target.value)}
           disabled={running}
-          required
-          placeholder="Profesorado en Ciencias de la Educación"
+          placeholder="Dejalo vacío si es lectura general"
           className="block h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-navy outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
         />
       </label>

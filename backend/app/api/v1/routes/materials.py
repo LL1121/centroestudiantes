@@ -18,16 +18,17 @@ from fastapi import (
     status,
 )
 from fastapi.responses import Response, StreamingResponse
-from sqlalchemy import select, text
+from sqlalchemy import select, text, update
 
 from app.api.deps import CurrentUser, OptionalCurrentUser, SessionDep
+from app.models.embedding import Embedding
 from app.models.material import Material, MaterialStatus
 from app.models.user import UserRole
 from app.schemas.material import (
-    MaterialBibliographyUpdate,
     MaterialCitationRead,
     MaterialRead,
     MaterialSearchRead,
+    MaterialUpdate,
     MaterialUploadResponse,
 )
 from app.services.citation import build_citation
@@ -36,7 +37,7 @@ from app.services.material_search import search_materials
 from app.services.material_similar import find_similar_materials
 from app.services.rag_processor import process_material_pipeline
 from app.services.storage import get_storage
-from app.services.tags import parse_tags
+from app.services.tags import normalize_tags_list, parse_tags
 
 router = APIRouter(prefix="/materials", tags=["materials"])
 
@@ -71,6 +72,35 @@ def _parse_optional_int(value: str | None, field: str) -> int | None:
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             f"{field} debe ser un número entero.",
         ) from exc
+
+
+def _normalize_carrera(value: str | None) -> str | None:
+    if value is None:
+        return None
+    v = value.strip()
+    if not v:
+        return None
+    if len(v) < _CARRERA_MIN:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "La carrera debe tener al menos 2 caracteres o quedar vacía.",
+        )
+    return v
+
+
+def _assert_can_modify_material(
+    user: CurrentUser,
+    material: Material,
+    *,
+    action: str = "editar",
+) -> None:
+    is_owner = material.uploader_id is not None and material.uploader_id == user.id
+    is_admin = user.role == UserRole.admin
+    if not (is_owner or is_admin):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            f"No podés {action} este material.",
+        )
 
 
 @router.get("/tags", response_model=list[str])
@@ -183,24 +213,35 @@ async def get_material_citation(
 
 
 @router.patch("/{material_id}", response_model=MaterialRead)
-async def update_material_bibliography(
+async def update_material(
     user: CurrentUser,
     session: SessionDep,
     material_id: Annotated[uuid.UUID, Path()],
-    payload: MaterialBibliographyUpdate,
+    payload: MaterialUpdate,
 ) -> MaterialRead:
-    """Actualiza metadata bibliográfica (uploader o admin)."""
+    """Actualiza metadata del material (uploader o admin). No reemplaza el archivo."""
     material = await session.get(Material, material_id)
     if material is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Material no encontrado.")
-    is_owner = material.uploader_id is not None and material.uploader_id == user.id
-    is_admin = user.role == UserRole.admin
-    if not (is_owner or is_admin):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "No podés editar este material.")
+    _assert_can_modify_material(user, material)
 
     data = payload.model_dump(exclude_unset=True)
+    if "tags" in data:
+        data["tags"] = normalize_tags_list(data["tags"])
+    if "carrera" in data:
+        data["carrera"] = _normalize_carrera(data["carrera"])
+
+    carrera_changed = "carrera" in data
     for key, value in data.items():
         setattr(material, key, value)
+
+    if carrera_changed:
+        await session.execute(
+            update(Embedding)
+            .where(Embedding.material_id == material.id)
+            .values(carrera=material.carrera)
+        )
+
     await session.commit()
     await session.refresh(material)
     return MaterialRead.model_validate(material)
@@ -217,7 +258,7 @@ async def upload_material(
     background_tasks: BackgroundTasks,
     file: Annotated[UploadFile, File()],
     titulo: Annotated[str, Form(min_length=_TITULO_MIN, max_length=_TITULO_MAX)],
-    carrera: Annotated[str, Form(min_length=_CARRERA_MIN, max_length=_CARRERA_MAX)],
+    carrera: Annotated[str | None, Form(max_length=_CARRERA_MAX)] = None,
     descripcion: Annotated[str | None, Form(max_length=2000)] = None,
     tags: Annotated[str | None, Form(max_length=500, description="Tags separados por coma")] = None,
     autor: Annotated[str | None, Form(max_length=_AUTOR_MAX)] = None,
@@ -277,7 +318,7 @@ async def upload_material(
         ciudad_publicacion=ciudad_publicacion.strip()
         if ciudad_publicacion and ciudad_publicacion.strip()
         else None,
-        carrera=carrera,
+        carrera=_normalize_carrera(carrera),
         tags=parse_tags(tags),
         storage_key=stored.key,
         tipo_archivo=tipo_archivo,
@@ -422,13 +463,7 @@ async def delete_material(
     if material is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Material no encontrado.")
 
-    is_owner = material.uploader_id is not None and material.uploader_id == user.id
-    is_admin = user.role == UserRole.admin
-    if not (is_owner or is_admin):
-        raise HTTPException(
-            status.HTTP_403_FORBIDDEN,
-            "Solo el autor original o un admin pueden eliminar este material.",
-        )
+    _assert_can_modify_material(user, material, action="eliminar")
 
     storage_key = material.storage_key
 

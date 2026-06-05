@@ -6,6 +6,7 @@ import { ChevronLeft } from 'lucide-react'
 import { serverFetch, ApiRequestError } from '@/lib/api/server'
 import type { MaterialRead, MaterialSearchRead } from '@/lib/api/types'
 import { bibHref } from '@/lib/biblioteca-path'
+import { materialCarreraLabel } from '@/lib/material-labels'
 
 import { CitationButton } from '../../../_components/citation-button'
 import { SimilarMaterials } from '../../../_components/similar-materials'
@@ -70,7 +71,7 @@ export default async function LeerPage({ params }: PageProps) {
               {material.titulo}
             </span>
             <span className="hidden sm:inline"> · </span>
-            <span className="block text-xs sm:inline sm:text-sm">{material.carrera}</span>
+            <span className="block text-xs sm:inline sm:text-sm">{materialCarreraLabel(material.carrera)}</span>
           </p>
           <CitationButton materialId={material.id} titulo={material.titulo} />
         </div>
