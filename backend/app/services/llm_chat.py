@@ -231,7 +231,7 @@ class FakeChatLLM:
             "Modo desarrollo activo (LLM_BACKEND=fake). El RAG recuperó este "
             "contexto para tu consulta:\n\n"
             f"{ctx or '(sin contexto)'}\n\n"
-            "Para respuestas reales configurá LLM_BACKEND=openai o groq con su API key."
+            "Para respuestas reales configurá LLM_BACKEND=openai, groq o gemini con su API key."
         )
 
     async def complete(self, *, system: str, user: str, max_tokens: int, temperature: float) -> str:
@@ -333,6 +333,14 @@ def get_llm_client() -> LLMClient:
         return OpenAICompatibleChat(
             api_key=settings.groq_api_key,
             base_url="https://api.groq.com/openai/v1",
+            model=settings.llm_model,
+        )
+    if backend == "gemini":
+        if not settings.gemini_api_key:
+            raise RuntimeError("LLM_BACKEND=gemini requiere GEMINI_API_KEY")
+        return OpenAICompatibleChat(
+            api_key=settings.gemini_api_key,
+            base_url=settings.gemini_base_url,
             model=settings.llm_model,
         )
     if backend == "fake":

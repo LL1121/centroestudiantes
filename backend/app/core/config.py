@@ -70,12 +70,18 @@ class Settings(BaseSettings):
     fuzzy_threshold: float = 0.2
 
     # LLM (Etapa 4)
-    llm_backend: str = "fake"        # fake | openai | groq
+    llm_backend: str = "fake"        # fake | openai | groq | gemini
     llm_model: str = "gpt-4o-mini"
     llm_temperature: float = 0.2
     llm_max_tokens: int = 600
     llm_top_k: int = 5
     groq_api_key: str | None = None
+    gemini_api_key: str | None = None
+    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai"
+
+    # Límite de consultas al asistente (por usuario autenticado).
+    # En free tier de Gemini conviene ser conservadores (p. ej. 30/day).
+    chat_rate_limit: str = "30/day"
 
     # Moderación de contenido (OpenAI omni-moderation)
     moderation_enabled: bool = True

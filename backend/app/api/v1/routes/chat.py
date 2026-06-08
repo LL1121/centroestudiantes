@@ -4,10 +4,11 @@ import json
 import logging
 
 import httpx
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 
 from app.api.deps import CurrentUser, SessionDep
+from app.core.limiter import chat_rate_limit_key, limiter
 from app.schemas.chat import ChatAskRequest, ChatAskResponse, ChunkSource
 from app.services.embeddings import get_embedding_client
 from app.services.llm_chat import (
@@ -27,8 +28,14 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 _SNIPPET_LEN = 220
 
 
+def _chat_limit() -> str:
+    return get_settings().chat_rate_limit
+
+
 @router.post("/ask", response_model=ChatAskResponse)
+@limiter.limit(_chat_limit, key_func=chat_rate_limit_key)
 async def ask(
+    request: Request,
     user: CurrentUser,
     session: SessionDep,
     payload: ChatAskRequest,
@@ -40,6 +47,7 @@ async def ask(
     3. Búsqueda semántica según `focus`.
     4. System prompt estricto + contexto → LLM.
     """
+    del request
     prepared = await _prepare_ask(user, session, payload)
     if isinstance(prepared, ChatAskResponse):
         return prepared
@@ -132,11 +140,14 @@ async def _prepare_ask(
 
 
 @router.post("/ask/stream")
+@limiter.limit(_chat_limit, key_func=chat_rate_limit_key)
 async def ask_stream(
+    request: Request,
     user: CurrentUser,
     session: SessionDep,
     payload: ChatAskRequest,
 ) -> StreamingResponse:
+    del request
     prepared = await _prepare_ask(user, session, payload)
     if isinstance(prepared, ChatAskResponse):
         async def blocked_gen():
