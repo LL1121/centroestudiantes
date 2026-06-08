@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from fastapi import FastAPI, Request
+import logging
+
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
@@ -9,6 +11,9 @@ from slowapi.errors import RateLimitExceeded
 from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.limiter import limiter
+from app.core.user_errors import user_message
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -23,6 +28,28 @@ app = FastAPI(
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(_request: Request, exc: HTTPException) -> JSONResponse:
+    if exc.status_code == 422:
+        safe = "Los datos enviados no son válidos."
+    else:
+        detail = exc.detail
+        if isinstance(detail, str):
+            safe = user_message(detail)
+        else:
+            safe = user_message(None)
+    return JSONResponse(status_code=exc.status_code, content={"detail": safe})
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(_request: Request, exc: Exception) -> JSONResponse:
+    logger.exception("Error no controlado")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": user_message(None)},
+    )
 
 app.add_middleware(
     CORSMiddleware,

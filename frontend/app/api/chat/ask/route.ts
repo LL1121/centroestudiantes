@@ -2,6 +2,7 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
 import { BACKEND_URL, COOKIE_ACCESS } from '@/lib/api/config'
+import { proxyErrorResponse } from '@/lib/api/proxy-error'
 
 export const runtime = 'nodejs'
 
@@ -29,9 +30,15 @@ export async function POST(request: Request) {
     cache: 'no-store',
   })
 
+  if (!upstream.ok) {
+    return proxyErrorResponse(upstream, 'No pudimos hablar con el asistente.')
+  }
+
   const text = await upstream.text()
-  const headers = new Headers({
-    'content-type': upstream.headers.get('content-type') ?? 'application/json',
+  return new NextResponse(text, {
+    status: upstream.status,
+    headers: {
+      'content-type': upstream.headers.get('content-type') ?? 'application/json',
+    },
   })
-  return new NextResponse(text, { status: upstream.status, headers })
 }

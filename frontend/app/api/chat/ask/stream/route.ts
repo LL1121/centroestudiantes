@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers'
 
 import { BACKEND_URL, COOKIE_ACCESS } from '@/lib/api/config'
+import { proxyErrorResponse } from '@/lib/api/proxy-error'
 
 export async function POST(request: Request) {
   const jar = await cookies()
@@ -21,11 +22,7 @@ export async function POST(request: Request) {
   })
 
   if (!upstream.ok || !upstream.body) {
-    const text = await upstream.text()
-    return new Response(text, {
-      status: upstream.status,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return proxyErrorResponse(upstream, 'No pudimos hablar con el asistente.')
   }
 
   return new Response(upstream.body, {

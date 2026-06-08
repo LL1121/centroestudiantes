@@ -56,7 +56,7 @@ class Settings(BaseSettings):
     storage_root: Path = Path("./var/storage")
 
     embedding_dim: int = 1536
-    embedding_backend: str = "fake"
+    embedding_backend: str = "fake"  # fake | openai | gemini
     embedding_model: str = "text-embedding-3-small"
     openai_api_key: str | None = None
 

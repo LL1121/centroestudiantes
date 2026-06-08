@@ -4,6 +4,8 @@ import { ArrowUp, Bot, ChevronDown, Globe2, ShieldAlert, Sparkles, User as UserI
 import { useEffect, useId, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 
+import { parseApiErrorBody, userMessage } from '@/lib/user-message'
+
 type Focus = 'global' | 'local'
 
 interface ChunkSource {
@@ -22,9 +24,7 @@ interface AskResponse {
   focus: Focus
 }
 
-interface ApiError {
-  detail?: string
-}
+const CHAT_ERROR = 'No pudimos hablar con el asistente. Intentá de nuevo en un momento.'
 
 type Message =
   | { id: string; role: 'user'; content: string }
@@ -103,12 +103,13 @@ export function ChatShell({
       })
 
       if (!response.ok || !response.body) {
-        const body = (await response.json().catch(() => ({}))) as ApiError
-        toast.error(body.detail ?? 'No pudimos hablar con el asistente.')
+        const body = await response.json().catch(() => ({}))
+        const message = parseApiErrorBody(body, CHAT_ERROR, response.status)
+        toast.error(message)
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId && m.role === 'assistant'
-              ? { ...m, content: body.detail ?? 'Hubo un error.' }
+              ? { ...m, content: message }
               : m,
           ),
         )
@@ -168,9 +169,15 @@ export function ChatShell({
               )
             }
             if (event === 'error') {
-              const detail =
-                typeof payload.detail === 'string' ? payload.detail : 'Error del asistente'
-              toast.error(detail)
+              const message = userMessage(payload.detail, CHAT_ERROR)
+              toast.error(message)
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantId && m.role === 'assistant'
+                    ? { ...m, content: message }
+                    : m,
+                ),
+              )
             }
           } catch {
             /* ignore malformed SSE chunk */

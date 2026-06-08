@@ -85,8 +85,9 @@ services:
       STORAGE_ROOT: /app/var/storage
 
       EMBEDDING_DIM: "1536"
-      EMBEDDING_BACKEND: ${EMBEDDING_BACKEND:-fake}
-      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
+      # fake | openai | gemini (gemini = free tier, reusa GEMINI_API_KEY)
+      EMBEDDING_BACKEND: ${EMBEDDING_BACKEND:-gemini}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-gemini-embedding-001}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
 
       CHUNK_SIZE: ${CHUNK_SIZE:-1000}

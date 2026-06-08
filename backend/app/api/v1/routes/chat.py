@@ -20,6 +20,7 @@ from app.services.llm_chat import (
     search_context,
 )
 from app.core.config import get_settings
+from app.core.user_errors import embedding_error_message, llm_error_message
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +67,7 @@ async def ask(
         logger.exception("LLM upstream falló")
         raise HTTPException(
             status.HTTP_502_BAD_GATEWAY,
-            "El asistente no respondió a tiempo. Intentá de nuevo en un momento.",
+            llm_error_message(),
         ) from exc
 
     sources = [
@@ -123,10 +124,13 @@ async def _prepare_ask(
         logger.exception("Embedding de la query falló")
         raise HTTPException(
             status.HTTP_502_BAD_GATEWAY,
-            "No pudimos generar el embedding de tu consulta.",
+            embedding_error_message(exc),
         ) from exc
     if not vectors:
-        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Sin vector de query.")
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            "No pudimos procesar tu consulta. Intentá de nuevo.",
+        )
 
     chunks = await search_context(
         query_vector=vectors[0],
@@ -182,7 +186,7 @@ async def ask_stream(
             yield f"event: done\ndata: {json.dumps(done.model_dump(mode='json'))}\n\n"
         except httpx.HTTPError:
             logger.exception("LLM stream falló")
-            err = {"detail": "El asistente no respondió a tiempo."}
+            err = {"detail": llm_error_message()}
             yield f"event: error\ndata: {json.dumps(err)}\n\n"
 
     return StreamingResponse(
