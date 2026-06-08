@@ -50,6 +50,7 @@ export function usePredictiveReading({ onNext, enabled, paused = false }: Option
   const calibTopRef = useRef<number | null>(null)
   const statusRef = useRef<PredictiveStatus>('idle')
   const calibStepRef = useRef<CalibStep | null>(null)
+  const capturingRef = useRef(false)
 
   const [status, setStatus] = useState<PredictiveStatus>('idle')
   const setStatusBoth = useCallback((s: PredictiveStatus) => {
@@ -66,6 +67,13 @@ export function usePredictiveReading({ onNext, enabled, paused = false }: Option
   )
   const [faceDetected, setFaceDetected] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [capturing, setCapturing] = useState(false)
+  const setCapturingBoth = useCallback((v: boolean) => {
+    capturingRef.current = v
+    setCapturing(v)
+  }, [])
+  const [captureProgress, setCaptureProgress] = useState(0)
+  const [calibHint, setCalibHint] = useState<string | null>(null)
 
   const stopCamera = useCallback(() => {
     cancelAnimationFrame(rafRef.current)
@@ -120,7 +128,9 @@ export function usePredictiveReading({ onNext, enabled, paused = false }: Option
       } else {
         setCalibStepBoth('top')
         setStatusBoth('calibrating')
-        calibStartRef.current = performance.now()
+        setCapturingBoth(false)
+        setCaptureProgress(0)
+        setCalibHint(null)
         calibSamplesRef.current = []
         calibTopRef.current = null
       }
@@ -133,13 +143,21 @@ export function usePredictiveReading({ onNext, enabled, paused = false }: Option
           : 'No pudimos acceder a la cámara. Revisá los permisos.',
       )
     }
-  }, [calibration, loadLandmarker, stopCamera, setCalibStepBoth, setStatusBoth])
+  }, [
+    calibration,
+    loadLandmarker,
+    stopCamera,
+    setCalibStepBoth,
+    setStatusBoth,
+    setCapturingBoth,
+  ])
 
   const finishCalibStep = useCallback(() => {
     const samples = calibSamplesRef.current
-    if (samples.length < 5) {
-      calibStartRef.current = performance.now()
+    if (samples.length < 8) {
+      // Muy pocas muestras (rostro fuera de cuadro / poca luz): reintentar paso.
       calibSamplesRef.current = []
+      setCalibHint('No te detectamos bien. Acomodate y probá de nuevo.')
       return
     }
     const avg = samples.reduce((a, b) => a + b, 0) / samples.length
@@ -147,8 +165,8 @@ export function usePredictiveReading({ onNext, enabled, paused = false }: Option
     if (step === 'top') {
       calibTopRef.current = avg
       setCalibStepBoth('bottom')
+      setCalibHint(null)
       calibSamplesRef.current = []
-      calibStartRef.current = performance.now()
       return
     }
     if (step === 'bottom' && calibTopRef.current !== null) {
@@ -160,17 +178,30 @@ export function usePredictiveReading({ onNext, enabled, paused = false }: Option
       savePredictiveCalibration(final)
       setCalibration(final)
       setCalibStepBoth(null)
+      setCalibHint(null)
       setStatusBoth('active')
     }
   }, [setCalibStepBoth, setStatusBoth])
 
+  /** Arranca la ventana de captura del paso actual (disparado por el botón). */
+  const beginCapture = useCallback(() => {
+    if (statusRef.current !== 'calibrating') return
+    calibSamplesRef.current = []
+    calibStartRef.current = performance.now()
+    setCaptureProgress(0)
+    setCalibHint(null)
+    setCapturingBoth(true)
+  }, [setCapturingBoth])
+
   const startCalibration = useCallback(() => {
     setCalibStepBoth('top')
     setStatusBoth('calibrating')
+    setCapturingBoth(false)
+    setCaptureProgress(0)
+    setCalibHint(null)
     calibSamplesRef.current = []
     calibTopRef.current = null
-    calibStartRef.current = performance.now()
-  }, [setCalibStepBoth, setStatusBoth])
+  }, [setCalibStepBoth, setStatusBoth, setCapturingBoth])
 
   useEffect(() => {
     if (!enabled) {
@@ -205,33 +236,42 @@ export function usePredictiveReading({ onNext, enabled, paused = false }: Option
       const lm = landmarkerRef.current
       if (!video || !lm || video.readyState < 2) return
 
-      if (pausedRef.current || document.hidden) {
-        if (st === 'active') setStatusBoth('paused')
-        dwellStartRef.current = null
-        return
-      }
-      if (st === 'paused') setStatusBoth('active')
+      // Durante la calibración no pausamos por chat/foco: necesitamos muestrear.
+      if (st !== 'calibrating') {
+        if (pausedRef.current || document.hidden) {
+          if (st === 'active') setStatusBoth('paused')
+          dwellStartRef.current = null
+          return
+        }
+        if (st === 'paused') setStatusBoth('active')
 
-      if (now < cooldownUntilRef.current) {
-        dwellStartRef.current = null
-        return
+        if (now < cooldownUntilRef.current) {
+          dwellStartRef.current = null
+          return
+        }
       }
 
       const result = lm.detectForVideo(video, now)
       const landmarks = result.faceLandmarks?.[0]
-      if (!landmarks || landmarks.length < 470) {
-        setFaceDetected(false)
-        dwellStartRef.current = null
-        return
-      }
-      setFaceDetected(true)
-      const score = computeVerticalGazeScore(landmarks)
+      const hasFace = !!landmarks && landmarks.length >= 470
+      setFaceDetected(hasFace)
+      const score = hasFace ? computeVerticalGazeScore(landmarks!) : null
 
       if (st === 'calibrating' && calibStepRef.current) {
-        calibSamplesRef.current.push(score)
-        if (now - calibStartRef.current >= CALIB_SAMPLE_MS) {
+        if (!capturingRef.current) return
+        if (score !== null) calibSamplesRef.current.push(score)
+        const elapsed = now - calibStartRef.current
+        setCaptureProgress(Math.min(1, elapsed / CALIB_SAMPLE_MS))
+        if (elapsed >= CALIB_SAMPLE_MS) {
+          setCapturingBoth(false)
+          setCaptureProgress(0)
           finishCalibStep()
         }
+        return
+      }
+
+      if (score === null) {
+        dwellStartRef.current = null
         return
       }
 
@@ -252,7 +292,7 @@ export function usePredictiveReading({ onNext, enabled, paused = false }: Option
 
     rafRef.current = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(rafRef.current)
-  }, [enabled, finishCalibStep, setStatusBoth])
+  }, [enabled, finishCalibStep, setStatusBoth, setCapturingBoth])
 
   const recalibrate = useCallback(() => {
     clearPredictiveCalibration()
@@ -268,6 +308,10 @@ export function usePredictiveReading({ onNext, enabled, paused = false }: Option
     calibration,
     faceDetected,
     error,
+    capturing,
+    captureProgress,
+    calibHint,
+    beginCapture,
     startCalibration,
     recalibrate,
     stop: stopCamera,

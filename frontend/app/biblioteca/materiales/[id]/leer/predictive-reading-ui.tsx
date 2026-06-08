@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
+import { CALIB_SAMPLE_MS } from './predictive-reading-utils'
 import { usePredictiveReading } from './predictive-reading'
 
 interface PredictiveReadingControlProps {
@@ -43,6 +44,10 @@ export function PredictiveReadingControl({
     calibStep,
     faceDetected,
     error,
+    capturing,
+    captureProgress,
+    calibHint,
+    beginCapture,
     recalibrate,
     stop,
   } = usePredictiveReading({
@@ -63,6 +68,7 @@ export function PredictiveReadingControl({
   }
 
   const handleRecalibrate = () => {
+    setModalOpen(false)
     recalibrate()
   }
 
@@ -93,8 +99,8 @@ export function PredictiveReadingControl({
             <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
               <li>Podés desactivarlo en cualquier momento.</li>
               <li>
-                La primera vez: calibración de 2 pasos (inicio y final del
-                texto).
+                La primera vez: calibración guiada de 2 pasos (mirás el inicio y
+                el final del texto).
               </li>
             </ul>
           </DialogHeader>
@@ -132,52 +138,169 @@ export function PredictiveReadingControl({
       </Dialog>
 
       {enabled && (
-        <PredictiveOverlay
-          videoRef={videoRef}
-          status={status}
-          calibStep={calibStep}
-          faceDetected={faceDetected}
-          error={error}
-          onDisable={handleDeactivate}
-        />
+        <>
+          {/* Video oculto: fuente de frames para MediaPipe. */}
+          <video
+            ref={videoRef}
+            muted
+            playsInline
+            aria-hidden
+            className={
+              status === 'active' || status === 'paused'
+                ? 'fixed bottom-6 left-4 z-50 h-12 w-16 -scale-x-100 rounded-lg object-cover shadow-lg ring-1 ring-white/20 sm:bottom-6'
+                : 'pointer-events-none fixed h-px w-px opacity-0'
+            }
+          />
+
+          {status === 'calibrating' && calibStep && (
+            <CalibrationOverlay
+              step={calibStep}
+              capturing={capturing}
+              progress={captureProgress}
+              faceDetected={faceDetected}
+              hint={calibHint}
+              onBegin={beginCapture}
+              onCancel={handleDeactivate}
+            />
+          )}
+
+          <PredictiveStatusBadge
+            status={status}
+            faceDetected={faceDetected}
+            error={error}
+            onDisable={handleDeactivate}
+          />
+        </>
       )}
     </>
   )
 }
 
-interface OverlayProps {
-  videoRef: React.RefObject<HTMLVideoElement | null>
+interface CalibrationOverlayProps {
+  step: 'top' | 'bottom'
+  capturing: boolean
+  progress: number
+  faceDetected: boolean
+  hint: string | null
+  onBegin: () => void
+  onCancel: () => void
+}
+
+function CalibrationOverlay({
+  step,
+  capturing,
+  progress,
+  faceDetected,
+  hint,
+  onBegin,
+  onCancel,
+}: CalibrationOverlayProps) {
+  const isTop = step === 'top'
+  const secondsLeft = Math.max(
+    1,
+    Math.ceil(((1 - progress) * CALIB_SAMPLE_MS) / 1000),
+  )
+
+  return (
+    <div className="fixed inset-0 z-80 flex flex-col">
+      {/* Scrim que oscurece el fondo. */}
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-[1px]" />
+
+      {/* Zona resaltada a mirar (arriba o abajo). */}
+      <div
+        className={`pointer-events-none absolute left-1/2 flex w-[88%] max-w-2xl -translate-x-1/2 items-center justify-center ${
+          isTop ? 'top-[8%]' : 'bottom-[8%]'
+        }`}
+      >
+        <div
+          className={`relative flex h-24 w-full items-center justify-center rounded-2xl border-4 border-dashed transition-colors sm:h-28 ${
+            capturing
+              ? 'animate-pulse border-primary bg-primary/25 shadow-[0_0_40px_rgba(198,161,101,0.55)]'
+              : 'border-primary/80 bg-primary/15'
+          }`}
+        >
+          {capturing ? (
+            <div className="flex flex-col items-center text-white">
+              <span className="text-4xl font-bold tabular-nums">
+                {secondsLeft}
+              </span>
+              <span className="text-xs">
+                {faceDetected ? 'Seguí mirando acá…' : 'Te perdimos, mirá la cámara'}
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-white">
+              <Eye className="h-6 w-6" />
+              <span className="text-base font-semibold">
+                Mirá {isTop ? 'el inicio' : 'el final'} del texto (acá)
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Tarjeta central con instrucciones + botón (oculta durante la captura). */}
+      {!capturing && (
+        <div className="relative z-10 m-auto w-[88%] max-w-sm rounded-2xl bg-card p-5 text-center shadow-2xl">
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+            Calibración · paso {isTop ? '1' : '2'} de 2
+          </p>
+          <h3 className="mt-1 text-lg font-bold text-navy">
+            {isTop ? 'Zona superior' : 'Zona inferior'}
+          </h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Cuando toques <strong>Empezar</strong>, mirá fijo la zona resaltada{' '}
+            {isTop ? 'de arriba' : 'de abajo'} durante unos segundos. No muevas
+            la cabeza, solo los ojos.
+          </p>
+
+          <p
+            className={`mt-3 text-xs font-medium ${
+              faceDetected ? 'text-green-600' : 'text-amber-600'
+            }`}
+          >
+            {faceDetected ? '✓ Te estamos detectando' : 'Acomodá tu cara frente a la cámara'}
+          </p>
+          {hint && <p className="mt-1 text-xs text-destructive">{hint}</p>}
+
+          <div className="mt-4 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={onBegin}
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              <Eye className="h-4 w-4" />
+              Empezar
+            </button>
+            <button
+              type="button"
+              onClick={onCancel}
+              className="inline-flex h-9 w-full items-center justify-center rounded-lg text-xs font-medium text-muted-foreground hover:text-navy"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+interface StatusBadgeProps {
   status: string
-  calibStep: 'top' | 'bottom' | null
   faceDetected: boolean
   error: string | null
   onDisable: () => void
 }
 
-function PredictiveOverlay({
-  videoRef,
+function PredictiveStatusBadge({
   status,
-  calibStep,
   faceDetected,
   error,
   onDisable,
-}: OverlayProps) {
-  const showPreview =
-    (status === 'active' || status === 'paused') && !error
-
+}: StatusBadgeProps) {
   return (
-    <div className="pointer-events-none fixed bottom-20 left-3 z-50 flex flex-col gap-2 sm:bottom-6 sm:left-4">
-      {status === 'calibrating' && calibStep && (
-        <div className="pointer-events-auto max-w-[220px] rounded-xl bg-navy/90 px-3 py-2 text-xs text-white shadow-lg backdrop-blur">
-          <p className="font-semibold">
-            {calibStep === 'top'
-              ? 'Mirá el inicio del texto'
-              : 'Mirá el final del texto'}
-          </p>
-          <p className="mt-1 text-white/80">Mantené la mirada 2 segundos…</p>
-        </div>
-      )}
-
+    <div className="pointer-events-none fixed bottom-20 left-3 z-50 flex flex-col gap-2 sm:bottom-6 sm:left-24">
       {status === 'loading' && (
         <div className="flex items-center gap-2 rounded-xl bg-navy/90 px-3 py-2 text-xs text-white">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -198,45 +321,26 @@ function PredictiveOverlay({
         </div>
       )}
 
-      <div
-        className={
-          showPreview
-            ? 'pointer-events-auto flex items-center gap-2 rounded-xl bg-navy/85 p-1.5 shadow-lg backdrop-blur'
-            : 'fixed h-px w-px overflow-hidden opacity-0'
-        }
-      >
-        <video
-          ref={videoRef}
-          muted
-          playsInline
-          className={
-            showPreview
-              ? 'h-12 w-16 -scale-x-100 rounded-lg object-cover'
-              : 'h-px w-px'
-          }
-          aria-hidden
-        />
-        {showPreview && (
-          <>
-            <div className="text-[10px] text-white">
-              <p className="font-medium">
-                {status === 'paused' ? 'Pausado' : 'Lectura predictiva'}
-              </p>
-              <p className={faceDetected ? 'text-green-300' : 'text-amber-200'}>
-                {faceDetected ? 'Rostro detectado' : 'Buscando rostro…'}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onDisable}
-              className="ml-1 rounded-lg p-1 text-white/80 hover:bg-white/10"
-              aria-label="Desactivar lectura predictiva"
-            >
-              <EyeOff className="h-3.5 w-3.5" />
-            </button>
-          </>
-        )}
-      </div>
+      {(status === 'active' || status === 'paused') && !error && (
+        <div className="pointer-events-auto flex items-center gap-2 rounded-xl bg-navy/85 px-2 py-1.5 shadow-lg backdrop-blur">
+          <div className="text-[10px] text-white">
+            <p className="font-medium">
+              {status === 'paused' ? 'Pausado' : 'Lectura predictiva'}
+            </p>
+            <p className={faceDetected ? 'text-green-300' : 'text-amber-200'}>
+              {faceDetected ? 'Rostro detectado' : 'Buscando rostro…'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onDisable}
+            className="ml-1 rounded-lg p-1 text-white/80 hover:bg-white/10"
+            aria-label="Desactivar lectura predictiva"
+          >
+            <EyeOff className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
     </div>
   )
 }

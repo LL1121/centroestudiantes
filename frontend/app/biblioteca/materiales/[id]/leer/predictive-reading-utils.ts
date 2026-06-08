@@ -93,4 +93,5 @@ export function gazeThreshold(cal: PredictiveCalibration): number {
 
 export const DWELL_MS = 1500
 export const COOLDOWN_MS = 2500
-export const CALIB_SAMPLE_MS = 2000
+/** Ventana de muestreo de cada paso de calibración (mirar la zona resaltada). */
+export const CALIB_SAMPLE_MS = 4500
