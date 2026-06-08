@@ -73,7 +73,7 @@ class Settings(BaseSettings):
     llm_backend: str = "fake"        # fake | openai | groq | gemini
     llm_model: str = "gpt-4o-mini"
     llm_temperature: float = 0.2
-    llm_max_tokens: int = 600
+    llm_max_tokens: int = 1200
     llm_top_k: int = 5
     groq_api_key: str | None = None
     gemini_api_key: str | None = None
@@ -100,6 +100,15 @@ class Settings(BaseSettings):
     public_app_url: str = "http://localhost:3000"
     email_verify_expire_hours: int = 24
     password_reset_expire_hours: int = 2
+    require_email_verified: bool = False
+    twofa_challenge_expire_minutes: int = 5
+    twofa_email_otp_expire_minutes: int = 10
+
+    # Antivirus (ClamAV)
+    antivirus_enabled: bool = False
+    clamav_host: str = "clamav"
+    clamav_port: int = 3310
+    upload_max_bytes: int = 52_428_800  # 50 MB
 
     @property
     def is_production(self) -> bool:

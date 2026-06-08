@@ -1,8 +1,11 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { useEffect, useState } from 'react'
 
+import { ReadingThemeToggle } from '@/app/biblioteca/_components/reading-theme-toggle'
 import type { TipoArchivo } from '@/lib/api/types'
+import { loadReadingTheme, saveReadingTheme, type ReadingTheme } from '@/lib/reading-theme'
 
 import { ImageViewer } from './image-viewer'
 
@@ -29,21 +32,43 @@ interface Props {
 }
 
 export function MaterialViewer({ fileUrl, tipo, titulo }: Props) {
-  switch (tipo) {
-    case 'pdf':
-      return <PdfViewer fileUrl={fileUrl} titulo={titulo} />
-    case 'epub':
-      return <EpubViewer fileUrl={fileUrl} titulo={titulo} />
-    case 'jpeg':
-    case 'png':
-      return <ImageViewer fileUrl={fileUrl} titulo={titulo} />
-    default:
-      return (
-        <div className="mt-6 rounded-2xl border border-destructive/30 bg-destructive/5 p-6 text-sm text-destructive">
-          Formato no soportado para visualizar en línea.
-        </div>
-      )
+  const [readingTheme, setReadingTheme] = useState<ReadingTheme>('light')
+
+  useEffect(() => {
+    setReadingTheme(loadReadingTheme())
+  }, [])
+
+  const onThemeChange = (next: ReadingTheme) => {
+    setReadingTheme(next)
+    saveReadingTheme(next)
   }
+
+  const viewer = (() => {
+    switch (tipo) {
+      case 'pdf':
+        return <PdfViewer fileUrl={fileUrl} titulo={titulo} readingTheme={readingTheme} />
+      case 'epub':
+        return <EpubViewer fileUrl={fileUrl} titulo={titulo} readingTheme={readingTheme} />
+      case 'jpeg':
+      case 'png':
+        return <ImageViewer fileUrl={fileUrl} titulo={titulo} readingTheme={readingTheme} />
+      default:
+        return (
+          <div className="mt-6 rounded-2xl border border-destructive/30 bg-destructive/5 p-6 text-sm text-destructive">
+            Formato no soportado para visualizar en línea.
+          </div>
+        )
+    }
+  })()
+
+  return (
+    <div className="mt-3 flex min-h-0 flex-1 flex-col sm:mt-4">
+      <div className="mb-2 flex justify-end">
+        <ReadingThemeToggle value={readingTheme} onChange={onThemeChange} />
+      </div>
+      {viewer}
+    </div>
+  )
 }
 
 function ViewerLoading({ label }: { label: string }) {

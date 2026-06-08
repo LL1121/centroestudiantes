@@ -13,6 +13,11 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   if (pathname.startsWith('/biblioteca')) return NextResponse.next()
 
+  const authRootPages = ['/recuperar', '/restablecer', '/verificar-email']
+  if (authRootPages.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+    return NextResponse.next()
+  }
+
   const url = request.nextUrl.clone()
   url.pathname = pathname === '/' ? '/biblioteca' : `/biblioteca${pathname}`
   return NextResponse.rewrite(url)

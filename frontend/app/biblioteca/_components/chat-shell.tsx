@@ -40,13 +40,23 @@ type Message =
 interface Props {
   initialMaterialId: string | null
   materialTitulo: string | null
+  initialFocus?: Focus
+  /** Panel integrado: ocupa todo el alto disponible del contenedor padre. */
+  embedded?: boolean
 }
 
-export function ChatShell({ initialMaterialId, materialTitulo }: Props) {
+export function ChatShell({
+  initialMaterialId,
+  materialTitulo,
+  initialFocus,
+  embedded = false,
+}: Props) {
   const inputId = useId()
   const [messages, setMessages] = useState<Message[]>([])
   const [draft, setDraft] = useState('')
-  const [focus, setFocus] = useState<Focus>(initialMaterialId ? 'local' : 'global')
+  const [focus, setFocus] = useState<Focus>(
+    initialFocus ?? (initialMaterialId ? 'local' : 'global'),
+  )
   const [pending, start] = useTransition()
   const listRef = useRef<HTMLDivElement>(null)
 
@@ -178,7 +188,11 @@ export function ChatShell({ initialMaterialId, materialTitulo }: Props) {
   }
 
   return (
-    <div className="flex flex-1 flex-col rounded-2xl border border-border bg-card shadow-sm">
+    <div
+      className={`flex flex-col rounded-2xl border border-border bg-card shadow-sm ${
+        embedded ? 'h-full min-h-0 flex-1' : 'flex-1'
+      }`}
+    >
       <FocusBar
         focus={focus}
         onChange={setFocus}
@@ -188,8 +202,8 @@ export function ChatShell({ initialMaterialId, materialTitulo }: Props) {
 
       <div
         ref={listRef}
-        className="flex-1 space-y-4 overflow-y-auto px-3 py-4 sm:px-5"
-        style={{ minHeight: 320 }}
+        className={`flex-1 space-y-4 overflow-y-auto px-3 py-4 sm:px-5 ${embedded ? 'min-h-0' : ''}`}
+        style={embedded ? undefined : { minHeight: 320 }}
       >
         {messages.length === 0 && !pending && <EmptyState focus={focus} />}
         {messages.map((m) =>

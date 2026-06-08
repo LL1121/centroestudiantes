@@ -10,11 +10,12 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { useBibliotecaTheme } from '@/app/biblioteca/_components/biblioteca-theme-provider'
+import type { ReadingTheme } from '@/lib/reading-theme'
 
 interface Props {
   fileUrl: string
   titulo: string
+  readingTheme: ReadingTheme
 }
 
 interface SearchHit {
@@ -27,11 +28,10 @@ interface SearchHit {
  * Usamos epub.js dinámicamente porque depende de APIs del DOM y no tiene
  * tipados oficiales para SSR.
  */
-export function EpubViewer({ fileUrl, titulo }: Props) {
+export function EpubViewer({ fileUrl, titulo, readingTheme }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const bookRef = useRef<EpubBook | null>(null)
   const renditionRef = useRef<EpubRendition | null>(null)
-  const { theme } = useBibliotecaTheme()
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -110,19 +110,28 @@ export function EpubViewer({ fileUrl, titulo }: Props) {
   useEffect(() => {
     const rendition = renditionRef.current
     if (!rendition) return
-    const isDark = theme === 'dark'
     rendition.themes.register('biblioteca-light', {
       body: { background: '#ffffff', color: '#1a1a1a', 'line-height': '1.6' },
       a: { color: '#0077cc' },
     })
-    rendition.themes.register('biblioteca-dark', {
-      body: { background: '#0a1422', color: '#e8eef7', 'line-height': '1.6' },
-      a: { color: '#75aadb' },
-      'p, li, h1, h2, h3, h4, h5, h6, span, blockquote': { color: '#e8eef7 !important' },
-      'h1, h2, h3, h4, h5, h6': { color: '#c8dcf2 !important' },
+    rendition.themes.register('biblioteca-sepia', {
+      body: { background: '#f4ecd8', color: '#3d2f1f', 'line-height': '1.6' },
+      a: { color: '#6b4f2a' },
     })
-    rendition.themes.select(isDark ? 'biblioteca-dark' : 'biblioteca-light')
-  }, [theme, loading])
+    rendition.themes.register('biblioteca-dark', {
+      body: { background: '#1a1a1a', color: '#e8e8e8', 'line-height': '1.6' },
+      a: { color: '#75aadb' },
+      'p, li, h1, h2, h3, h4, h5, h6, span, blockquote': { color: '#e8e8e8 !important' },
+      'h1, h2, h3, h4, h5, h6': { color: '#f0f0f0 !important' },
+    })
+    const themeId =
+      readingTheme === 'dark'
+        ? 'biblioteca-dark'
+        : readingTheme === 'sepia'
+          ? 'biblioteca-sepia'
+          : 'biblioteca-light'
+    rendition.themes.select(themeId)
+  }, [readingTheme, loading])
 
   const goPrev = () => renditionRef.current?.prev()
   const goNext = () => renditionRef.current?.next()

@@ -3,12 +3,14 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 
+import { getOptionalUser } from '@/lib/api/auth'
 import { serverFetch, ApiRequestError } from '@/lib/api/server'
 import type { MaterialRead, MaterialSearchRead } from '@/lib/api/types'
 import { bibHref } from '@/lib/biblioteca-path'
 import { materialCarreraLabel } from '@/lib/material-labels'
 
 import { CitationButton } from '../../../_components/citation-button'
+import { ReaderChatFab } from '../../../_components/reader-chat-fab'
 import { SimilarMaterials } from '../../../_components/similar-materials'
 import { MaterialViewer } from './material-viewer'
 
@@ -50,8 +52,14 @@ export async function generateMetadata({ params }: PageProps) {
 
 export default async function LeerPage({ params }: PageProps) {
   const { id } = await params
-  const [material, similar] = await Promise.all([loadMaterial(id), loadSimilar(id)])
+  const [material, similar, user] = await Promise.all([
+    loadMaterial(id),
+    loadSimilar(id),
+    getOptionalUser(),
+  ])
   if (!material) notFound()
+  const isGuest = user === null
+  const ready = material.status === 'active' || material.status === 'indexed'
 
   const fileUrl = `/api/materials/${material.id}/file`
 
@@ -84,6 +92,10 @@ export default async function LeerPage({ params }: PageProps) {
       />
 
       <SimilarMaterials items={similar} />
+
+      {ready && (
+        <ReaderChatFab materialId={material.id} titulo={material.titulo} isGuest={isGuest} />
+      )}
     </div>
   )
 }

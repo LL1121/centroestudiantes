@@ -9,13 +9,20 @@ from sqlalchemy import select
 
 from app.api.deps import SessionDep
 from app.core.limiter import limiter
-from app.core.security import DUMMY_PASSWORD_HASH, hash_password, verify_password
+from app.core.config import get_settings
+from app.core.security import (
+    DUMMY_PASSWORD_HASH,
+    create_2fa_challenge_token,
+    hash_password,
+    verify_password,
+)
 from app.models.user import User, UserRole
 from app.schemas.auth_email import (
     EmailOnlyRequest,
     PasswordResetConfirmRequest,
     TokenOnlyRequest,
 )
+from app.schemas.auth_2fa import LoginResponse
 from app.schemas.token import LogoutRequest, RefreshRequest, TokenPair
 from app.schemas.user import UserCreate, UserRead
 from app.services.auth_email import (
@@ -54,14 +61,15 @@ async def register(request: Request, payload: UserCreate, session: SessionDep) -
     return user
 
 
-@router.post("/login", response_model=TokenPair)
+@router.post("/login", response_model=LoginResponse)
 @limiter.limit("10/minute")
 async def login(
     request: Request,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     session: SessionDep,
-) -> TokenPair:
+) -> LoginResponse:
     del request
+    settings = get_settings()
     user = await session.scalar(select(User).where(User.email == form_data.username))
     password_hash = user.password_hash if user is not None else DUMMY_PASSWORD_HASH
     if not verify_password(form_data.password, password_hash):
@@ -70,11 +78,27 @@ async def login(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Credenciales inválidas")
     if not user.is_active:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Usuario deshabilitado")
+    if settings.require_email_verified and not user.email_verified:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Verificá tu email antes de iniciar sesión.",
+        )
 
     user.last_login_at = datetime.now(tz=UTC)
     await session.commit()
 
-    return await issue_token_pair(session, user)
+    if user.twofa_enabled:
+        return LoginResponse(
+            requires_2fa=True,
+            challenge_token=create_2fa_challenge_token(user_id=user.id),
+        )
+
+    tokens = await issue_token_pair(session, user)
+    return LoginResponse(
+        access_token=tokens.access_token,
+        refresh_token=tokens.refresh_token,
+        token_type=tokens.token_type,
+    )
 
 
 @router.post("/refresh", response_model=TokenPair)

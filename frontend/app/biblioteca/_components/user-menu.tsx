@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, useTransition } from 'react'
-import { ChevronDown, LogIn, LogOut, Shield, UserPlus } from 'lucide-react'
+import { ChevronDown, LogIn, LogOut, Settings, Shield, UserPlus, Users } from 'lucide-react'
 
 import type { UserRead } from '@/lib/api/types'
 import { bibHref } from '@/lib/biblioteca-path'
@@ -96,6 +96,14 @@ export function UserMenu({ user }: Props) {
               {user.role}
             </p>
           </div>
+          <MenuLink href={bibHref('/biblioteca/cuenta/seguridad')} icon={<Settings className="h-4 w-4" />}>
+            Seguridad
+          </MenuLink>
+          {user.role === 'admin' && (
+            <MenuLink href={bibHref('/biblioteca/admin')} icon={<Users className="h-4 w-4" />}>
+              Administración
+            </MenuLink>
+          )}
           {(user.role === 'admin' || user.role === 'moderador') && (
             <MenuLink href={bibHref('/biblioteca/moderacion')} icon={<Shield className="h-4 w-4" />}>
               Moderación

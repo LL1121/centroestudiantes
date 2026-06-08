@@ -21,10 +21,12 @@ import {
 } from 'react'
 
 import { configurePdfWorkerOn, pdfDocumentOptions } from '@/lib/pdf-worker'
+import { READING_SURFACE, type ReadingTheme } from '@/lib/reading-theme'
 
 interface Props {
   fileUrl: string
   titulo: string
+  readingTheme: ReadingTheme
 }
 
 type ReactPdfModule = typeof import('react-pdf')
@@ -37,7 +39,7 @@ const ZOOM_STEP = 0.2
 const MIN_SCALE = 0.5
 const MAX_SCALE = 3
 
-export function PdfViewer({ fileUrl, titulo }: Props) {
+export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [pdf, setPdf] = useState<ReactPdfModule | null>(null)
   const [numPages, setNumPages] = useState<number | null>(null)
@@ -187,7 +189,10 @@ export function PdfViewer({ fileUrl, titulo }: Props) {
   const { Document, Page } = pdf
 
   return (
-    <section className="mt-3 flex min-h-0 flex-1 flex-col rounded-2xl border border-border bg-card shadow-sm sm:mt-4">
+    <section
+      data-reading-theme={readingTheme}
+      className="flex min-h-0 flex-1 flex-col rounded-2xl border border-border bg-card shadow-sm"
+    >
       <Toolbar
         pageNumber={pageNumber}
         numPages={numPages}
@@ -218,7 +223,7 @@ export function PdfViewer({ fileUrl, titulo }: Props) {
 
       <div
         ref={containerRef}
-        className="biblioteca-pdf-scroll flex flex-1 items-start justify-center overflow-auto rounded-b-2xl bg-secondary/40 p-3"
+        className={`biblioteca-pdf-scroll flex flex-1 items-start justify-center overflow-auto rounded-b-2xl p-3 ${READING_SURFACE[readingTheme]}`}
       >
         {error ? (
           <div className="flex flex-1 items-center justify-center text-sm text-destructive">
@@ -282,11 +287,14 @@ export function PdfViewer({ fileUrl, titulo }: Props) {
           padding: 0;
           border-radius: 2px;
         }
-        .dark .biblioteca-pdf-page {
+        [data-reading-theme='dark'] .biblioteca-pdf-page {
           filter: invert(0.92) hue-rotate(180deg);
         }
-        .dark .biblioteca-pdf-mark {
+        [data-reading-theme='dark'] .biblioteca-pdf-mark {
           background: rgba(198, 161, 101, 0.7);
+        }
+        [data-reading-theme='sepia'] .biblioteca-pdf-page {
+          filter: sepia(0.35) saturate(0.9);
         }
       `}</style>
     </section>

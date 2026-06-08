@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { getOptionalUser } from '@/lib/api/auth'
 
 import { AiFab } from './_components/ai-fab'
+import { ChatProvider } from './_components/chat-provider'
 import { BibliotecaHeader } from './_components/biblioteca-header'
 import { BibliotecaMobileNav } from './_components/biblioteca-mobile-nav'
 import {
@@ -22,13 +23,15 @@ export default async function BibliotecaLayout({ children }: { children: ReactNo
 
   return (
     <BibliotecaThemeProvider initialTheme={initialTheme}>
-      <div className="flex min-h-dvh flex-col pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] md:pb-0">
-        <BibliotecaHeader user={user} />
-        <main className="flex flex-1 flex-col">{children}</main>
-        <AiFab isGuest={user === null} />
-        <BibliotecaMobileNav isGuest={user === null} />
-        <BibliotecaToaster />
-      </div>
+      <ChatProvider>
+        <div className="flex min-h-dvh flex-col pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] md:pb-0">
+          <BibliotecaHeader user={user} />
+          <main className="flex flex-1 flex-col">{children}</main>
+          <AiFab isGuest={user === null} />
+          <BibliotecaMobileNav isGuest={user === null} />
+          <BibliotecaToaster />
+        </div>
+      </ChatProvider>
     </BibliotecaThemeProvider>
   )
 }

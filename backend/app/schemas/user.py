@@ -33,5 +33,12 @@ class UserRead(BaseModel):
     role: UserRole
     is_active: bool
     email_verified: bool
+    twofa_enabled: bool = False
     created_at: datetime
     last_login_at: datetime | None
+
+
+class UserAdminUpdate(BaseModel):
+    role: UserRole | None = None
+    is_active: bool | None = None
+    full_name: str | None = Field(None, min_length=2, max_length=255)

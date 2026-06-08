@@ -7,6 +7,7 @@ export interface UserRead {
   role: UserRole
   is_active: boolean
   email_verified: boolean
+  twofa_enabled: boolean
   created_at: string
   last_login_at: string | null
 }
@@ -15,6 +16,14 @@ export interface TokenPair {
   access_token: string
   refresh_token: string
   token_type: string
+}
+
+export interface LoginResponse {
+  access_token: string | null
+  refresh_token: string | null
+  token_type: string
+  requires_2fa: boolean
+  challenge_token: string | null
 }
 
 export interface ApiError {

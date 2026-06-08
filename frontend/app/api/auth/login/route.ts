@@ -9,7 +9,7 @@ import {
   REFRESH_MAX_AGE,
 } from '@/lib/api/config'
 import { accessCookieOptions, refreshCookieOptions } from '@/lib/api/cookies'
-import type { ApiError, TokenPair } from '@/lib/api/types'
+import type { ApiError, LoginResponse } from '@/lib/api/types'
 
 interface LoginBody {
   email?: string
@@ -42,14 +42,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ detail: error.detail ?? 'Credenciales inválidas' }, { status: upstream.status })
   }
 
-  const tokens = (await upstream.json()) as TokenPair
-  const jar = await cookies()
+  const result = (await upstream.json()) as LoginResponse
 
-  jar.set(COOKIE_ACCESS, tokens.access_token, {
+  if (result.requires_2fa) {
+    return NextResponse.json({
+      requires_2fa: true,
+      challenge_token: result.challenge_token,
+    })
+  }
+
+  if (!result.access_token || !result.refresh_token) {
+    return NextResponse.json({ detail: 'Respuesta de login inválida' }, { status: 502 })
+  }
+
+  const jar = await cookies()
+  jar.set(COOKIE_ACCESS, result.access_token, {
     ...accessCookieOptions(request),
     maxAge: ACCESS_MAX_AGE,
   })
-  jar.set(COOKIE_REFRESH, tokens.refresh_token, {
+  jar.set(COOKIE_REFRESH, result.refresh_token, {
     ...refreshCookieOptions(request),
     maxAge: REFRESH_MAX_AGE,
   })

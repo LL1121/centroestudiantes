@@ -21,6 +21,7 @@ from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import select, text, update
 
 from app.api.deps import CurrentUser, OptionalCurrentUser, SessionDep
+from app.core.config import get_settings
 from app.models.embedding import Embedding
 from app.models.material import Material, MaterialStatus
 from app.models.user import UserRole
@@ -31,6 +32,7 @@ from app.schemas.material import (
     MaterialUpdate,
     MaterialUploadResponse,
 )
+from app.services.antivirus import scan_file_path
 from app.services.citation import build_citation
 from app.services.file_validation import MIME_TO_EXT, MIME_TO_TIPO, validate_file_bytes
 from app.services.material_search import search_materials
@@ -293,6 +295,22 @@ async def upload_material(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
             "No pudimos guardar el archivo en el servidor.",
         ) from exc
+
+    settings = get_settings()
+    if stored.size_bytes > settings.upload_max_bytes:
+        await storage.delete(stored.key)
+        raise HTTPException(
+            status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            "El archivo supera el límite permitido.",
+        )
+
+    infected, virus_name = scan_file_path(storage.absolute_path(stored.key))
+    if infected:
+        await storage.delete(stored.key)
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Archivo rechazado por seguridad ({virus_name}).",
+        )
 
     # Deduplicación: cualquier material no-fallido con el mismo hash.
     existing = await session.scalar(

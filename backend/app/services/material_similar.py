@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.embedding import Embedding
 from app.models.material import Material, MaterialStatus
-from app.services.material_search import MaterialSearchHit, _PUBLIC
+from app.services.material_search import MaterialSearchHit, _PUBLIC, _escape_like
 
 
 def _compute_centroid(vectors: list[list[float]]) -> list[float]:
@@ -113,7 +113,8 @@ async def _fallback_by_metadata(
     )
     source_carrera = (source.carrera or "").strip()
     if source_carrera:
-        stmt = stmt.where(Material.carrera.ilike(source_carrera))
+        pattern = f"%{_escape_like(source_carrera)}%"
+        stmt = stmt.where(Material.carrera.ilike(pattern, escape="\\"))
 
     rows = (await session.scalars(stmt)).all()
     source_tags = set(source.tags or [])

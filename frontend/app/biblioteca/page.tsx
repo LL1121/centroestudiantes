@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Suspense } from 'react'
-import { BookOpen, MessageCircle, Sparkles } from 'lucide-react'
+import { BookOpen } from 'lucide-react'
 
 import { getOptionalUser } from '@/lib/api/auth'
 import { serverFetch } from '@/lib/api/server'
@@ -161,7 +161,6 @@ function MaterialCard({
   canModify: boolean
 }) {
   const ready = material.status === 'active' || material.status === 'indexed'
-  const asistenteHref = `${bibHref('/biblioteca/asistente')}?material_id=${encodeURIComponent(material.id)}&titulo=${encodeURIComponent(material.titulo)}`
   const matchLabel = matchKindLabel(material.match_kind)
 
   return (
@@ -207,27 +206,13 @@ function MaterialCard({
 
         <div className="mt-auto flex flex-col gap-2 pt-2">
           {ready ? (
-            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-              <Link
-                href={bibHref(`/biblioteca/materiales/${material.id}/leer`)}
-                className="inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-              >
-                <BookOpen className="h-4 w-4" aria-hidden />
-                Leer
-              </Link>
-              {!isGuest && (
-                <Link
-                  href={asistenteHref}
-                  className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/5"
-                  aria-label="Consultar con el asistente"
-                  title="Consultar con el asistente"
-                >
-                  <MessageCircle className="h-4 w-4" aria-hidden />
-                  <span className="sm:hidden">Asistente IA</span>
-                  <Sparkles className="hidden h-3.5 w-3.5 text-gold sm:inline" aria-hidden />
-                </Link>
-              )}
-            </div>
+            <Link
+              href={bibHref(`/biblioteca/materiales/${material.id}/leer`)}
+              className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              <BookOpen className="h-4 w-4" aria-hidden />
+              Leer
+            </Link>
           ) : (
             <p className="text-xs text-muted-foreground">{statusHint(material.status)}</p>
           )}

@@ -14,6 +14,7 @@ from app.db.base import Base, TimestampMixin, UUIDMixin
 class AuthTokenKind(str, enum.Enum):
     email_verify = "email_verify"
     password_reset = "password_reset"
+    twofa_email = "twofa_email"
 
 
 class AuthToken(Base, UUIDMixin, TimestampMixin):

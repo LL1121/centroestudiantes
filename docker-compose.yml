@@ -34,6 +34,15 @@ services:
       retries: 15
       start_period: 30s
 
+  clamav:
+    image: clamav/clamav:1.4
+    container_name: centro-clamav
+    restart: unless-stopped
+    networks:
+      lyntrix_network:
+        aliases:
+          - centro-clamav
+
   backend:
     build:
       context: ./backend
@@ -44,6 +53,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      clamav:
+        condition: service_started
     env_file:
       - .env
     environment:
@@ -86,11 +97,16 @@ services:
       LLM_BACKEND: ${LLM_BACKEND:-gemini}
       LLM_MODEL: ${LLM_MODEL:-gemini-2.5-flash-latest}
       LLM_TEMPERATURE: ${LLM_TEMPERATURE:-0.2}
-      LLM_MAX_TOKENS: ${LLM_MAX_TOKENS:-600}
+      LLM_MAX_TOKENS: ${LLM_MAX_TOKENS:-1200}
       LLM_TOP_K: ${LLM_TOP_K:-5}
       CHAT_RATE_LIMIT: ${CHAT_RATE_LIMIT:-30/day}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      REQUIRE_EMAIL_VERIFIED: ${REQUIRE_EMAIL_VERIFIED:-false}
+      ANTIVIRUS_ENABLED: ${ANTIVIRUS_ENABLED:-false}
+      CLAMAV_HOST: centro-clamav
+      CLAMAV_PORT: "3310"
+      UPLOAD_MAX_BYTES: ${UPLOAD_MAX_BYTES:-52428800}
     volumes:
       - centro_storage:/app/var/storage
     networks:

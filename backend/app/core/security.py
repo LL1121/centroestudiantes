@@ -10,7 +10,7 @@ import jwt
 
 from app.core.config import get_settings
 
-TokenType = Literal["access", "refresh"]
+TokenType = Literal["access", "refresh", "2fa"]
 
 # Hash bcrypt fijo para timing constante cuando el email no existe.
 DUMMY_PASSWORD_HASH = bcrypt.hashpw(b"timing-safe-dummy", bcrypt.gensalt()).decode("utf-8")
@@ -41,6 +41,8 @@ def _expiry(token_type: TokenType) -> datetime:
     now = datetime.now(tz=UTC)
     if token_type == "access":
         return now + timedelta(minutes=settings.access_token_expire_minutes)
+    if token_type == "2fa":
+        return now + timedelta(minutes=settings.twofa_challenge_expire_minutes)
     return now + timedelta(days=settings.refresh_token_expire_days)
 
 
@@ -63,6 +65,10 @@ def create_token(
     if token_type == "refresh":
         payload["jti"] = jti or str(uuid.uuid4())
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+
+
+def create_2fa_challenge_token(*, user_id: UUID) -> str:
+    return create_token(user_id=user_id, role="", token_type="2fa")
 
 
 def decode_token(token: str, *, expected_type: TokenType) -> TokenPayload:

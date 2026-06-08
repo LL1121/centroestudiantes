@@ -38,6 +38,9 @@ async def search_materials(
     Busca materiales por nombre, materia (carrera), tema (tags) y similitud semántica.
 
     Combina resultados de texto y vector, ordenados por relevancia descendente.
+
+    Seguridad SQL: consultas vía ORM o ``text()`` con bind params (:lim, :tag_pat).
+    Los patrones ILIKE escapan % y _ con ``_escape_like``.
     """
     limit = max(1, min(limit, 100))
     settings = get_settings()

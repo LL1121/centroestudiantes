@@ -3,23 +3,26 @@
 import { Download, ZoomIn, ZoomOut } from 'lucide-react'
 import { useState } from 'react'
 
+import { READING_SURFACE, type ReadingTheme } from '@/lib/reading-theme'
+
 interface Props {
   fileUrl: string
   titulo: string
+  readingTheme: ReadingTheme
 }
 
 const STEP = 0.25
 const MIN = 0.5
 const MAX = 4
 
-export function ImageViewer({ fileUrl, titulo }: Props) {
+export function ImageViewer({ fileUrl, titulo, readingTheme }: Props) {
   const [scale, setScale] = useState(1)
 
   const zoomIn = () => setScale((s) => Math.min(MAX, +(s + STEP).toFixed(2)))
   const zoomOut = () => setScale((s) => Math.max(MIN, +(s - STEP).toFixed(2)))
 
   return (
-    <section className="mt-3 flex min-h-0 flex-1 flex-col gap-3 rounded-2xl border border-border bg-card p-3 shadow-sm sm:mt-4 sm:p-4">
+    <section className="flex min-h-0 flex-1 flex-col gap-3 rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1">
           <ToolbarButton onClick={zoomOut} aria-label="Reducir">
@@ -42,7 +45,9 @@ export function ImageViewer({ fileUrl, titulo }: Props) {
         </a>
       </div>
 
-      <div className="flex flex-1 items-center justify-center overflow-auto rounded-xl bg-secondary/30 p-3">
+      <div
+        className={`flex flex-1 items-center justify-center overflow-auto rounded-xl p-3 ${READING_SURFACE[readingTheme]}`}
+      >
         {/* Imagen estática del backend, fuera del optimizador de Next */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
