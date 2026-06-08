@@ -67,7 +67,7 @@ export function ImageViewer({ fileUrl, titulo, readingTheme }: Props) {
       ref={sectionRef}
       className={
         immersive
-          ? 'fixed inset-0 z-60 flex h-[100dvh] flex-col bg-card'
+          ? 'fixed inset-0 z-60 flex h-dvh flex-col bg-card'
           : 'flex min-h-0 flex-1 flex-col gap-3 rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4'
       }
     >

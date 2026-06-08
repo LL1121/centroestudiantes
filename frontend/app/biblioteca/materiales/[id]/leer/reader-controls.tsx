@@ -144,6 +144,12 @@ interface ZoomGestureOptions {
   minScale?: number
   maxScale?: number
   onFit?: () => void
+  /**
+   * Si devuelve false, no se cambia de página con swipe horizontal (p. ej.
+   * cuando la hoja es más ancha que la pantalla y el usuario está desplazando
+   * para leer). Por defecto siempre permite el swipe.
+   */
+  allowSwipe?: () => boolean
 }
 
 /** Swipe + pinch-to-zoom + doble tap para ajustar, en un solo handler. */
@@ -215,6 +221,7 @@ export function useReaderTouchGestures(
     swipeStart.current = null
     const touch = event.changedTouches[0]
     if (!origin || !touch) return
+    if (zoom?.allowSwipe && !zoom.allowSwipe()) return
     const dx = touch.clientX - origin.x
     const dy = touch.clientY - origin.y
     if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < Math.abs(dy) * 1.3) return
@@ -225,6 +232,43 @@ export function useReaderTouchGestures(
   return { onTouchStart, onTouchMove, onTouchEnd }
 }
 
+/**
+ * Detecta si un contenedor tiene scroll horizontal (la hoja es más ancha que la
+ * pantalla). Sirve para no cambiar de página al desplazar para leer.
+ */
+export function useHorizontalOverflow(
+  ref: React.RefObject<HTMLElement | null>,
+  deps: React.DependencyList = [],
+) {
+  const [pannable, setPannable] = useState(false)
+  const pannableRef = useRef(false)
+
+  const set = useCallback((v: boolean) => {
+    pannableRef.current = v
+    setPannable(v)
+  }, [])
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const check = () => set(el.scrollWidth - el.clientWidth > 4)
+    check()
+    // Reintento corto: el layout/render del PDF puede llegar un frame tarde.
+    const t = window.setTimeout(check, 120)
+    const observer = new ResizeObserver(check)
+    observer.observe(el)
+    el.addEventListener('scroll', check, { passive: true })
+    return () => {
+      window.clearTimeout(t)
+      observer.disconnect()
+      el.removeEventListener('scroll', check)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ref, set, ...deps])
+
+  return { pannable, pannableRef }
+}
+
 interface ReaderZoomControlsProps {
   scale: number
   onZoomIn: () => void
@@ -233,7 +277,10 @@ interface ReaderZoomControlsProps {
   visible?: boolean
 }
 
-/** Controles flotantes de zoom (visibles en modo inmersivo). */
+/**
+ * Controles flotantes de zoom: pill horizontal abajo-centro para no solaparse
+ * con los chevrons de navegación (que van al centro de los lados).
+ */
 export function ReaderZoomControls({
   scale,
   onZoomIn,
@@ -243,18 +290,23 @@ export function ReaderZoomControls({
 }: ReaderZoomControlsProps) {
   if (!visible) return null
   return (
-    <div className="absolute bottom-16 right-3 z-30 flex flex-col items-center gap-1 rounded-xl bg-navy/75 p-1.5 shadow-lg backdrop-blur">
-      <ZoomButton onClick={onZoomIn} aria-label="Ampliar">
-        <ZoomIn className="h-4 w-4" />
-      </ZoomButton>
-      <span className="px-1 text-[10px] font-medium tabular-nums text-white">
-        {Math.round(scale * 100)}%
-      </span>
+    <div className="absolute bottom-3 left-1/2 z-40 flex -translate-x-1/2 items-center gap-0.5 rounded-full bg-navy/80 p-1 shadow-lg backdrop-blur">
       <ZoomButton onClick={onZoomOut} aria-label="Reducir">
         <ZoomOut className="h-4 w-4" />
       </ZoomButton>
-      <ZoomButton onClick={onFit} aria-label="Ajustar a pantalla" className="mt-0.5">
-        <Maximize2 className="h-3.5 w-3.5" />
+      <button
+        type="button"
+        onClick={onFit}
+        aria-label="Ajustar a pantalla"
+        className="min-w-12 rounded-full px-2 py-1 text-xs font-semibold tabular-nums text-white transition hover:bg-white/15"
+      >
+        {Math.round(scale * 100)}%
+      </button>
+      <ZoomButton onClick={onZoomIn} aria-label="Ampliar">
+        <ZoomIn className="h-4 w-4" />
+      </ZoomButton>
+      <ZoomButton onClick={onFit} aria-label="Ajustar a pantalla">
+        <Maximize2 className="h-4 w-4" />
       </ZoomButton>
     </div>
   )
@@ -269,7 +321,7 @@ function ZoomButton({
     <button
       type="button"
       {...props}
-      className={`inline-flex h-9 w-9 items-center justify-center rounded-lg text-white transition hover:bg-white/15 ${className}`}
+      className={`inline-flex h-9 w-9 items-center justify-center rounded-full text-white transition hover:bg-white/15 ${className}`}
     >
       {children}
     </button>
@@ -353,6 +405,9 @@ interface ReaderNavProps extends NavHandlers {
   canPrev?: boolean
   canNext?: boolean
   pageLabel?: string
+  /** Si la hoja se puede desplazar en horizontal, desactivamos las zonas táctiles
+   *  de borde para no cambiar de página al leer arrastrando. */
+  pannable?: boolean
 }
 
 /**
@@ -368,25 +423,30 @@ export function ReaderNav({
   canPrev = true,
   canNext = true,
   pageLabel,
+  pannable = false,
 }: ReaderNavProps) {
   return (
     <>
       {immersive && (
         <>
-          <button
-            type="button"
-            aria-label="Página anterior"
-            tabIndex={-1}
-            onClick={onPrev}
-            className="absolute left-0 top-0 z-20 h-full w-1/4 cursor-w-resize"
-          />
-          <button
-            type="button"
-            aria-label="Página siguiente"
-            tabIndex={-1}
-            onClick={onNext}
-            className="absolute right-0 top-0 z-20 h-full w-1/4 cursor-e-resize"
-          />
+          {!pannable && (
+            <>
+              <button
+                type="button"
+                aria-label="Página anterior"
+                tabIndex={-1}
+                onClick={onPrev}
+                className="absolute left-0 top-0 z-20 h-full w-1/5 cursor-w-resize"
+              />
+              <button
+                type="button"
+                aria-label="Página siguiente"
+                tabIndex={-1}
+                onClick={onNext}
+                className="absolute right-0 top-0 z-20 h-full w-1/5 cursor-e-resize"
+              />
+            </>
+          )}
           <button
             type="button"
             aria-label="Salir de pantalla completa"
@@ -418,7 +478,11 @@ export function ReaderNav({
       </button>
 
       {pageLabel && (
-        <div className="pointer-events-none absolute bottom-3 left-1/2 z-30 -translate-x-1/2 rounded-full bg-navy/70 px-3 py-1 text-xs font-medium tabular-nums text-white shadow backdrop-blur">
+        <div
+          className={`pointer-events-none absolute left-1/2 z-30 -translate-x-1/2 rounded-full bg-navy/70 px-3 py-1 text-xs font-medium tabular-nums text-white shadow backdrop-blur ${
+            immersive ? 'top-3' : 'bottom-3'
+          }`}
+        >
           {pageLabel}
         </div>
       )}

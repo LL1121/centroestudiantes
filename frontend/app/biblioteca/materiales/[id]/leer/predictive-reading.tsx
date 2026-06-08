@@ -38,6 +38,32 @@ interface FaceLandmarkerLike {
   close(): void
 }
 
+/** Traduce errores de getUserMedia a mensajes claros para el usuario. */
+function describeCameraError(err: unknown): string {
+  if (typeof window !== 'undefined' && !window.isSecureContext) {
+    return 'La cámara necesita una conexión segura (HTTPS). Abrí el sitio por su dirección https://'
+  }
+  if (err instanceof DOMException) {
+    if (err.message === 'insecure') {
+      return 'La cámara necesita HTTPS. Abrí el sitio con https:// (o desde el dominio público).'
+    }
+    if (err.message === 'unsupported') {
+      return 'Tu navegador no permite el acceso a la cámara en esta página.'
+    }
+    switch (err.name) {
+      case 'NotAllowedError':
+      case 'SecurityError':
+        return 'Permiso de cámara denegado. Activalo desde el ícono de la barra de direcciones y reintentá.'
+      case 'NotFoundError':
+      case 'OverconstrainedError':
+        return 'No encontramos una cámara disponible en este dispositivo.'
+      case 'NotReadableError':
+        return 'La cámara está en uso por otra app. Cerrala y volvé a intentar.'
+    }
+  }
+  return 'No pudimos acceder a la cámara. Revisá los permisos del navegador.'
+}
+
 export function usePredictiveReading({ onNext, enabled, paused = false }: Options) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const landmarkerRef = useRef<FaceLandmarkerLike | null>(null)
@@ -51,6 +77,7 @@ export function usePredictiveReading({ onNext, enabled, paused = false }: Option
   const statusRef = useRef<PredictiveStatus>('idle')
   const calibStepRef = useRef<CalibStep | null>(null)
   const capturingRef = useRef(false)
+  const captureRafRef = useRef<number>(0)
 
   const [status, setStatus] = useState<PredictiveStatus>('idle')
   const setStatusBoth = useCallback((s: PredictiveStatus) => {
@@ -77,6 +104,8 @@ export function usePredictiveReading({ onNext, enabled, paused = false }: Option
 
   const stopCamera = useCallback(() => {
     cancelAnimationFrame(rafRef.current)
+    cancelAnimationFrame(captureRafRef.current)
+    capturingRef.current = false
     landmarkerRef.current?.close()
     landmarkerRef.current = null
     streamRef.current?.getTracks().forEach((t) => t.stop())
@@ -113,6 +142,17 @@ export function usePredictiveReading({ onNext, enabled, paused = false }: Option
     setStatusBoth('loading')
     setError(null)
     try {
+      if (
+        typeof navigator === 'undefined' ||
+        !navigator.mediaDevices?.getUserMedia
+      ) {
+        throw new DOMException(
+          typeof window !== 'undefined' && !window.isSecureContext
+            ? 'insecure'
+            : 'unsupported',
+          'NotAllowedError',
+        )
+      }
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
         audio: false,
@@ -137,11 +177,7 @@ export function usePredictiveReading({ onNext, enabled, paused = false }: Option
     } catch (err) {
       stopCamera()
       setStatusBoth('error')
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'No pudimos acceder a la cámara. Revisá los permisos.',
-      )
+      setError(describeCameraError(err))
     }
   }, [
     calibration,
@@ -183,15 +219,34 @@ export function usePredictiveReading({ onNext, enabled, paused = false }: Option
     }
   }, [setCalibStepBoth, setStatusBoth])
 
-  /** Arranca la ventana de captura del paso actual (disparado por el botón). */
+  /**
+   * Arranca la ventana de captura del paso actual (disparado por el botón).
+   * La cuenta regresiva corre con su propio rAF (independiente de la detección)
+   * para que nunca se "quede trabada" si la cámara tarda o pierde el rostro.
+   */
   const beginCapture = useCallback(() => {
     if (statusRef.current !== 'calibrating') return
+    cancelAnimationFrame(captureRafRef.current)
     calibSamplesRef.current = []
     calibStartRef.current = performance.now()
     setCaptureProgress(0)
     setCalibHint(null)
     setCapturingBoth(true)
-  }, [setCapturingBoth])
+
+    const tick = () => {
+      const elapsed = performance.now() - calibStartRef.current
+      const p = Math.min(1, elapsed / CALIB_SAMPLE_MS)
+      setCaptureProgress(p)
+      if (p >= 1) {
+        setCapturingBoth(false)
+        setCaptureProgress(0)
+        finishCalibStep()
+        return
+      }
+      captureRafRef.current = requestAnimationFrame(tick)
+    }
+    captureRafRef.current = requestAnimationFrame(tick)
+  }, [setCapturingBoth, finishCalibStep])
 
   const startCalibration = useCallback(() => {
     setCalibStepBoth('top')
@@ -251,21 +306,20 @@ export function usePredictiveReading({ onNext, enabled, paused = false }: Option
         }
       }
 
-      const result = lm.detectForVideo(video, now)
-      const landmarks = result.faceLandmarks?.[0]
+      let landmarks: Array<{ x: number; y: number; z?: number }> | undefined
+      try {
+        const result = lm.detectForVideo(video, now)
+        landmarks = result.faceLandmarks?.[0]
+      } catch {
+        return
+      }
       const hasFace = !!landmarks && landmarks.length >= 470
       setFaceDetected(hasFace)
       const score = hasFace ? computeVerticalGazeScore(landmarks!) : null
 
-      if (st === 'calibrating' && calibStepRef.current) {
-        if (!capturingRef.current) return
-        if (score !== null) calibSamplesRef.current.push(score)
-        const elapsed = now - calibStartRef.current
-        setCaptureProgress(Math.min(1, elapsed / CALIB_SAMPLE_MS))
-        if (elapsed >= CALIB_SAMPLE_MS) {
-          setCapturingBoth(false)
-          setCaptureProgress(0)
-          finishCalibStep()
+      if (st === 'calibrating') {
+        if (capturingRef.current && score !== null) {
+          calibSamplesRef.current.push(score)
         }
         return
       }
@@ -292,7 +346,7 @@ export function usePredictiveReading({ onNext, enabled, paused = false }: Option
 
     rafRef.current = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(rafRef.current)
-  }, [enabled, finishCalibStep, setStatusBoth, setCapturingBoth])
+  }, [enabled, setStatusBoth])
 
   const recalibrate = useCallback(() => {
     clearPredictiveCalibration()

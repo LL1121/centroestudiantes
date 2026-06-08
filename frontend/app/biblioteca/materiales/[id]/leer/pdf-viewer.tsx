@@ -24,12 +24,16 @@ import {
 import { configurePdfWorkerOn, pdfDocumentOptions } from '@/lib/pdf-worker'
 import { READING_SURFACE, type ReadingTheme } from '@/lib/reading-theme'
 
-import { PredictiveReadingControl } from './predictive-reading-ui'
+import {
+  PredictiveTriggerButton,
+  usePredictiveController,
+} from './predictive-reading-ui'
 import { computeFitBaseWidth } from './reader-fit'
 import {
   ReaderNav,
   ReaderZoomControls,
   useContainerSize,
+  useHorizontalOverflow,
   useImmersive,
   useReaderKeys,
   useReaderTouchGestures,
@@ -79,8 +83,12 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
     () => computeFitBaseWidth(containerSize, pageAspect),
     [containerSize, pageAspect],
   )
-  const pageWidth = fitBaseWidth
-    ? Math.round(fitBaseWidth * deferredScale)
+  // Base robusta: si todavía no medimos el aspecto, usamos el ancho disponible
+  // para que el zoom funcione igual desde el primer momento.
+  const baseWidth =
+    fitBaseWidth ?? (containerSize ? containerSize.width - 24 : null)
+  const pageWidth = baseWidth
+    ? Math.round(baseWidth * deferredScale)
     : undefined
   const textLayerEnabled = showSearch && search.trim().length > 0
   const zoomPending = scale !== deferredScale
@@ -143,6 +151,11 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
   const zoomOut = () =>
     setScale((s) => Math.max(MIN_SCALE, +(s - ZOOM_STEP).toFixed(2)))
   const resetFit = useCallback(() => setScale(1), [])
+  const { pannable, pannableRef } = useHorizontalOverflow(containerRef, [
+    pageWidth,
+    immersive,
+    pageNumber,
+  ])
   const touchGestures = useReaderTouchGestures(
     { onPrev: goPrev, onNext: goNext },
     {
@@ -151,8 +164,10 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
       minScale: MIN_SCALE,
       maxScale: MAX_SCALE,
       onFit: resetFit,
+      allowSwipe: () => !pannableRef.current,
     },
   )
+  const predictive = usePredictiveController({ onNext: goNext })
 
   const runSearch = async (raw: string) => {
     const q = raw.trim().toLowerCase()
@@ -238,7 +253,7 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
       data-reading-theme={readingTheme}
       className={
         immersive
-          ? 'fixed inset-0 z-60 flex h-[100dvh] flex-col bg-card'
+          ? 'fixed inset-0 z-60 flex h-dvh flex-col bg-card'
           : 'flex min-h-0 flex-1 flex-col rounded-2xl border border-border bg-card shadow-sm'
       }
     >
@@ -257,7 +272,12 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
           onToggleSearch={() => setShowSearch((v) => !v)}
           onToggleImmersive={toggleImmersive}
           fileUrl={fileUrl}
-          predictiveSlot={<PredictiveReadingControl onNext={goNext} />}
+          predictiveSlot={
+            <PredictiveTriggerButton
+              onClick={predictive.openModal}
+              active={predictive.enabled}
+            />
+          }
         />
       )}
 
@@ -279,8 +299,8 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
         <div
           ref={containerRef}
           {...touchGestures}
-          className={`biblioteca-pdf-scroll flex flex-1 items-center justify-center overflow-auto p-3 ${
-            immersive ? 'min-h-0' : 'rounded-b-2xl'
+          className={`biblioteca-pdf-scroll flex flex-1 items-center justify-center overflow-auto ${
+            immersive ? 'min-h-0 p-1' : 'rounded-b-2xl p-3'
           } ${READING_SURFACE[readingTheme]}`}
         >
           {error ? (
@@ -340,6 +360,7 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
           canPrev={pageNumber > 1}
           canNext={!!numPages && pageNumber < numPages}
           pageLabel={`${pageNumber} / ${numPages ?? '…'}`}
+          pannable={pannable}
         />
         <ReaderZoomControls
           visible={immersive}
@@ -348,8 +369,16 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
           onZoomOut={zoomOut}
           onFit={resetFit}
         />
-        {immersive && <PredictiveReadingControl onNext={goNext} immersive />}
+        {immersive && (
+          <PredictiveTriggerButton
+            onClick={predictive.openModal}
+            active={predictive.enabled}
+            immersive
+          />
+        )}
       </div>
+
+      {predictive.node}
 
       <style jsx global>{`
         .biblioteca-pdf-page {
