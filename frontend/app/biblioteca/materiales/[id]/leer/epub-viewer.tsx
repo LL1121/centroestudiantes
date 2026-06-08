@@ -5,12 +5,20 @@ import {
   ChevronRight,
   Download,
   Loader2,
+  Maximize2,
   Search,
   X,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { ReadingTheme } from '@/lib/reading-theme'
+
+import {
+  attachSwipe,
+  ReaderNav,
+  useImmersive,
+  useReaderKeys,
+} from './reader-controls'
 
 interface Props {
   fileUrl: string
@@ -30,8 +38,11 @@ interface SearchHit {
  */
 export function EpubViewer({ fileUrl, titulo, readingTheme }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const sectionRef = useRef<HTMLElement>(null)
   const bookRef = useRef<EpubBook | null>(null)
   const renditionRef = useRef<EpubRendition | null>(null)
+  const { immersive, toggle: toggleImmersive, exit: exitImmersive } =
+    useImmersive(sectionRef)
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -46,9 +57,10 @@ export function EpubViewer({ fileUrl, titulo, readingTheme }: Props) {
 
     async function init() {
       const ePubModule = await import('epubjs')
-      const ePub = (ePubModule as { default?: typeof ePubModule }).default ??
+      const ePub =
+        (ePubModule as unknown as { default?: EpubFactory }).default ??
         (ePubModule as unknown as EpubFactory)
-      const book = (ePub as EpubFactory)(fileUrl)
+      const book = ePub(fileUrl)
       if (cancelled) return
       bookRef.current = book
 
@@ -85,6 +97,18 @@ export function EpubViewer({ fileUrl, titulo, readingTheme }: Props) {
           setProgress(Math.round(percentage * 100))
         }
       })
+
+      // Swipe dentro del iframe del EPUB (sus eventos no llegan a React).
+      try {
+        rendition.hooks?.content?.register((contents) => {
+          attachSwipe(contents.document, {
+            onPrev: () => void renditionRef.current?.prev(),
+            onNext: () => void renditionRef.current?.next(),
+          })
+        })
+      } catch {
+        // Si la versión de epub.js no expone hooks, quedan las zonas táctiles.
+      }
 
       await rendition.display()
       if (!cancelled) setLoading(false)
@@ -133,8 +157,23 @@ export function EpubViewer({ fileUrl, titulo, readingTheme }: Props) {
     rendition.themes.select(themeId)
   }, [readingTheme, loading])
 
-  const goPrev = () => renditionRef.current?.prev()
-  const goNext = () => renditionRef.current?.next()
+  const goPrev = useCallback(() => void renditionRef.current?.prev(), [])
+  const goNext = useCallback(() => void renditionRef.current?.next(), [])
+
+  useReaderKeys({ onPrev: goPrev, onNext: goNext })
+
+  // Al entrar/salir de pantalla completa cambia el tamaño del contenedor:
+  // forzamos un reflow del EPUB para que las páginas se recalculen.
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      try {
+        renditionRef.current?.resize?.()
+      } catch {
+        // epub.js puede no exponer resize en algunas versiones.
+      }
+    }, 120)
+    return () => window.clearTimeout(id)
+  }, [immersive])
 
   const runSearch = async (raw: string) => {
     const q = raw.trim()
@@ -180,37 +219,54 @@ export function EpubViewer({ fileUrl, titulo, readingTheme }: Props) {
   const memoHits = useMemo(() => hits.slice(0, 50), [hits])
 
   return (
-    <section className="mt-3 flex min-h-0 flex-1 flex-col rounded-2xl border border-border bg-card shadow-sm sm:mt-4">
-      <div className="flex flex-wrap items-center gap-2 border-b border-border px-2 py-2 sm:px-4">
-        <ToolbarButton onClick={goPrev} aria-label="Página anterior">
-          <ChevronLeft className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton onClick={goNext} aria-label="Página siguiente">
-          <ChevronRight className="h-4 w-4" />
-        </ToolbarButton>
-        <span className="text-xs tabular-nums text-muted-foreground">{progress}%</span>
+    <section
+      ref={sectionRef}
+      className={
+        immersive
+          ? 'fixed inset-0 z-60 flex flex-col bg-card'
+          : 'mt-3 flex min-h-0 flex-1 flex-col rounded-2xl border border-border bg-card shadow-sm sm:mt-4'
+      }
+    >
+      {!immersive && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-border px-2 py-2 sm:px-4">
+          <ToolbarButton onClick={goPrev} aria-label="Página anterior">
+            <ChevronLeft className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton onClick={goNext} aria-label="Página siguiente">
+            <ChevronRight className="h-4 w-4" />
+          </ToolbarButton>
+          <span className="text-xs tabular-nums text-muted-foreground">{progress}%</span>
 
-        <span className="mx-2 hidden h-5 w-px bg-border sm:inline-block" />
+          <span className="mx-2 hidden h-5 w-px bg-border sm:inline-block" />
 
-        <ToolbarButton
-          onClick={() => setShowSearch((v) => !v)}
-          active={showSearch}
-          aria-label="Buscar en el libro"
-        >
-          <Search className="h-4 w-4" />
-        </ToolbarButton>
+          <ToolbarButton
+            onClick={() => setShowSearch((v) => !v)}
+            active={showSearch}
+            aria-label="Buscar en el libro"
+          >
+            <Search className="h-4 w-4" />
+          </ToolbarButton>
 
-        <a
-          href={fileUrl}
-          download
-          className="inline-flex h-10 w-full basis-full items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 text-xs font-medium text-navy transition-colors hover:border-primary/40 sm:ml-auto sm:h-8 sm:w-auto sm:basis-auto"
-        >
-          <Download className="h-3.5 w-3.5" />
-          Descargar
-        </a>
-      </div>
+          <ToolbarButton
+            onClick={toggleImmersive}
+            active={immersive}
+            aria-label="Leer en pantalla completa"
+          >
+            <Maximize2 className="h-4 w-4" />
+          </ToolbarButton>
 
-      {showSearch && (
+          <a
+            href={fileUrl}
+            download
+            className="inline-flex h-10 w-full basis-full items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 text-xs font-medium text-navy transition-colors hover:border-primary/40 sm:ml-auto sm:h-8 sm:w-auto sm:basis-auto"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Descargar
+          </a>
+        </div>
+      )}
+
+      {!immersive && showSearch && (
         <form
           onSubmit={(e) => {
             e.preventDefault()
@@ -248,7 +304,11 @@ export function EpubViewer({ fileUrl, titulo, readingTheme }: Props) {
       )}
 
       <div className="flex flex-1 flex-col overflow-hidden lg:flex-row">
-        <div className="relative min-h-[55dvh] flex-1 bg-secondary/30 sm:min-h-[70vh]">
+        <div
+          className={`relative flex-1 bg-secondary/30 ${
+            immersive ? '' : 'min-h-[55dvh] sm:min-h-[70vh]'
+          }`}
+        >
           {error ? (
             <div className="flex h-full items-center justify-center text-sm text-destructive">
               {error}
@@ -262,9 +322,21 @@ export function EpubViewer({ fileUrl, titulo, readingTheme }: Props) {
               Abriendo libro…
             </div>
           )}
+
+          {!error && (
+            <ReaderNav
+              immersive={immersive}
+              onExit={exitImmersive}
+              onPrev={goPrev}
+              onNext={goNext}
+              canPrev={progress > 0}
+              canNext={progress < 100}
+              pageLabel={`${progress}%`}
+            />
+          )}
         </div>
 
-        {showSearch && memoHits.length > 0 && (
+        {!immersive && showSearch && memoHits.length > 0 && (
           <aside className="max-h-[40vh] w-full overflow-auto border-t border-border bg-secondary/20 p-2 lg:max-h-none lg:max-w-xs lg:border-l lg:border-t-0">
             <ul className="space-y-1">
               {memoHits.map((hit, i) => (
@@ -337,5 +409,11 @@ interface EpubRendition {
     register(name: string, rules: Record<string, Record<string, string>>): void
     select(name: string): void
   }
+  hooks?: {
+    content?: {
+      register(fn: (contents: { document: Document }) => void): void
+    }
+  }
+  resize?(): void
   destroy(): void
 }

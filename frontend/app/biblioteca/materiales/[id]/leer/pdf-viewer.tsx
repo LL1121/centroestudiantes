@@ -5,6 +5,7 @@ import {
   ChevronRight,
   Download,
   Loader2,
+  Maximize2,
   Search,
   X,
   ZoomIn,
@@ -22,6 +23,13 @@ import {
 
 import { configurePdfWorkerOn, pdfDocumentOptions } from '@/lib/pdf-worker'
 import { READING_SURFACE, type ReadingTheme } from '@/lib/reading-theme'
+
+import {
+  ReaderNav,
+  useImmersive,
+  useReaderKeys,
+  useSwipe,
+} from './reader-controls'
 
 interface Props {
   fileUrl: string
@@ -41,6 +49,9 @@ const MAX_SCALE = 3
 
 export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const sectionRef = useRef<HTMLElement>(null)
+  const { immersive, toggle: toggleImmersive, exit: exitImmersive } =
+    useImmersive(sectionRef)
   const [pdf, setPdf] = useState<ReactPdfModule | null>(null)
   const [numPages, setNumPages] = useState<number | null>(null)
   const [pageNumber, setPageNumber] = useState(1)
@@ -99,12 +110,20 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
     setLoading(false)
   }, [])
 
-  const goPrev = () =>
-    startPageTransition(() => setPageNumber((p) => Math.max(1, p - 1)))
-  const goNext = () =>
-    startPageTransition(() =>
-      setPageNumber((p) => Math.min(numPages ?? p, p + 1)),
-    )
+  const goPrev = useCallback(
+    () => startPageTransition(() => setPageNumber((p) => Math.max(1, p - 1))),
+    [],
+  )
+  const goNext = useCallback(
+    () =>
+      startPageTransition(() =>
+        setPageNumber((p) => Math.min(numPages ?? p, p + 1)),
+      ),
+    [numPages],
+  )
+
+  useReaderKeys({ onPrev: goPrev, onNext: goNext })
+  const swipe = useSwipe({ onPrev: goPrev, onNext: goNext })
   const zoomIn = () =>
     setScale((s) => Math.min(MAX_SCALE, +(s + ZOOM_STEP).toFixed(2)))
   const zoomOut = () =>
@@ -190,24 +209,33 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
 
   return (
     <section
+      ref={sectionRef}
       data-reading-theme={readingTheme}
-      className="flex min-h-0 flex-1 flex-col rounded-2xl border border-border bg-card shadow-sm"
+      className={
+        immersive
+          ? 'fixed inset-0 z-60 flex flex-col bg-card'
+          : 'flex min-h-0 flex-1 flex-col rounded-2xl border border-border bg-card shadow-sm'
+      }
     >
-      <Toolbar
-        pageNumber={pageNumber}
-        numPages={numPages}
-        scale={scale}
-        zoomPending={zoomPending}
-        showSearch={showSearch}
-        onPrev={goPrev}
-        onNext={goNext}
-        onZoomIn={zoomIn}
-        onZoomOut={zoomOut}
-        onToggleSearch={() => setShowSearch((v) => !v)}
-        fileUrl={fileUrl}
-      />
+      {!immersive && (
+        <Toolbar
+          pageNumber={pageNumber}
+          numPages={numPages}
+          scale={scale}
+          zoomPending={zoomPending}
+          showSearch={showSearch}
+          immersive={immersive}
+          onPrev={goPrev}
+          onNext={goNext}
+          onZoomIn={zoomIn}
+          onZoomOut={zoomOut}
+          onToggleSearch={() => setShowSearch((v) => !v)}
+          onToggleImmersive={toggleImmersive}
+          fileUrl={fileUrl}
+        />
+      )}
 
-      {showSearch && (
+      {!immersive && showSearch && (
         <SearchBar
           value={search}
           onChange={setSearch}
@@ -221,57 +249,72 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
         />
       )}
 
-      <div
-        ref={containerRef}
-        className={`biblioteca-pdf-scroll flex flex-1 items-start justify-center overflow-auto rounded-b-2xl p-3 ${READING_SURFACE[readingTheme]}`}
-      >
-        {error ? (
-          <div className="flex flex-1 items-center justify-center text-sm text-destructive">
-            {error}
-          </div>
-        ) : (
-          <div
-            className={`relative transition-opacity duration-150 ${pagePending || zoomPending ? 'opacity-80' : 'opacity-100'}`}
-          >
-            <Document
-              file={fileSpec}
-              onLoadSuccess={onDocumentLoad}
-              onLoadError={onDocumentError}
-              loading={
-                <div className="flex h-[60vh] items-center justify-center text-sm text-muted-foreground">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Abriendo PDF…
-                </div>
-              }
-              error={
-                <div className="text-sm text-destructive">
-                  No pudimos abrir el PDF.
-                </div>
-              }
-              externalLinkTarget="_blank"
-              options={docOptions}
+      <div className="relative flex min-h-0 flex-1">
+        <div
+          ref={containerRef}
+          {...swipe}
+          className={`biblioteca-pdf-scroll flex flex-1 items-start justify-center overflow-auto p-3 ${
+            immersive ? '' : 'rounded-b-2xl'
+          } ${READING_SURFACE[readingTheme]}`}
+        >
+          {error ? (
+            <div className="flex flex-1 items-center justify-center text-sm text-destructive">
+              {error}
+            </div>
+          ) : (
+            <div
+              className={`relative transition-opacity duration-150 ${pagePending || zoomPending ? 'opacity-80' : 'opacity-100'}`}
             >
-              <Page
-                key={`${pageNumber}-${pageWidth ?? 'auto'}`}
-                pageNumber={pageNumber}
-                width={pageWidth}
-                renderTextLayer={textLayerEnabled}
-                renderAnnotationLayer={false}
-                customTextRenderer={customTextRenderer}
-                className="biblioteca-pdf-page"
+              <Document
+                file={fileSpec}
+                onLoadSuccess={onDocumentLoad}
+                onLoadError={onDocumentError}
                 loading={
-                  <div className="flex h-[40vh] items-center justify-center text-sm text-muted-foreground">
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Renderizando página…
+                  <div className="flex h-[60vh] items-center justify-center text-sm text-muted-foreground">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Abriendo PDF…
                   </div>
                 }
-              />
-            </Document>
-          </div>
-        )}
-        {loading && !error && (
-          <p className="sr-only" aria-live="polite">
-            Cargando {titulo}
-          </p>
-        )}
+                error={
+                  <div className="text-sm text-destructive">
+                    No pudimos abrir el PDF.
+                  </div>
+                }
+                externalLinkTarget="_blank"
+                options={docOptions}
+              >
+                <Page
+                  key={`${pageNumber}-${pageWidth ?? 'auto'}`}
+                  pageNumber={pageNumber}
+                  width={pageWidth}
+                  renderTextLayer={textLayerEnabled}
+                  renderAnnotationLayer={false}
+                  customTextRenderer={customTextRenderer}
+                  className="biblioteca-pdf-page"
+                  loading={
+                    <div className="flex h-[40vh] items-center justify-center text-sm text-muted-foreground">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Renderizando página…
+                    </div>
+                  }
+                />
+              </Document>
+            </div>
+          )}
+          {loading && !error && (
+            <p className="sr-only" aria-live="polite">
+              Cargando {titulo}
+            </p>
+          )}
+        </div>
+
+        <ReaderNav
+          immersive={immersive}
+          onExit={exitImmersive}
+          onPrev={goPrev}
+          onNext={goNext}
+          canPrev={pageNumber > 1}
+          canNext={!!numPages && pageNumber < numPages}
+          pageLabel={`${pageNumber} / ${numPages ?? '…'}`}
+        />
       </div>
 
       <style jsx global>{`
@@ -307,11 +350,13 @@ interface ToolbarProps {
   scale: number
   zoomPending: boolean
   showSearch: boolean
+  immersive: boolean
   onPrev: () => void
   onNext: () => void
   onZoomIn: () => void
   onZoomOut: () => void
   onToggleSearch: () => void
+  onToggleImmersive: () => void
   fileUrl: string
 }
 
@@ -321,11 +366,13 @@ function Toolbar({
   scale,
   zoomPending,
   showSearch,
+  immersive,
   onPrev,
   onNext,
   onZoomIn,
   onZoomOut,
   onToggleSearch,
+  onToggleImmersive,
   fileUrl,
 }: ToolbarProps) {
   return (
@@ -367,6 +414,14 @@ function Toolbar({
         active={showSearch}
       >
         <Search className="h-4 w-4" />
+      </ToolbarButton>
+
+      <ToolbarButton
+        onClick={onToggleImmersive}
+        aria-label="Leer en pantalla completa"
+        active={immersive}
+      >
+        <Maximize2 className="h-4 w-4" />
       </ToolbarButton>
 
       <a
