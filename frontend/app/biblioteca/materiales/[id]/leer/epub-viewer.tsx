@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { ReadingTheme } from '@/lib/reading-theme'
 
+import { PredictiveReadingControl } from './predictive-reading-ui'
 import {
   attachSwipe,
   ReaderNav,
@@ -223,7 +224,7 @@ export function EpubViewer({ fileUrl, titulo, readingTheme }: Props) {
       ref={sectionRef}
       className={
         immersive
-          ? 'fixed inset-0 z-60 flex flex-col bg-card'
+          ? 'fixed inset-0 z-60 flex h-[100dvh] flex-col bg-card'
           : 'mt-3 flex min-h-0 flex-1 flex-col rounded-2xl border border-border bg-card shadow-sm sm:mt-4'
       }
     >
@@ -254,6 +255,8 @@ export function EpubViewer({ fileUrl, titulo, readingTheme }: Props) {
           >
             <Maximize2 className="h-4 w-4" />
           </ToolbarButton>
+
+          <PredictiveReadingControl onNext={goNext} />
 
           <a
             href={fileUrl}
@@ -334,6 +337,7 @@ export function EpubViewer({ fileUrl, titulo, readingTheme }: Props) {
               pageLabel={`${progress}%`}
             />
           )}
+          {immersive && <PredictiveReadingControl onNext={goNext} immersive />}
         </div>
 
         {!immersive && showSearch && memoHits.length > 0 && (

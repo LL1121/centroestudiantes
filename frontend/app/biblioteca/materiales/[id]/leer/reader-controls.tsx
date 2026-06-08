@@ -1,6 +1,13 @@
 'use client'
 
-import { ChevronLeft, ChevronRight, Minimize2 } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  Maximize2,
+  Minimize2,
+  ZoomIn,
+  ZoomOut,
+} from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 /**
@@ -103,24 +110,207 @@ export function useSwipe({ onPrev, onNext }: NavHandlers) {
   const start = useRef<{ x: number; y: number } | null>(null)
 
   const onTouchStart = (event: React.TouchEvent) => {
+    if (event.touches.length > 1) return
     const touch = event.touches[0]
     if (touch) start.current = { x: touch.clientX, y: touch.clientY }
   }
 
   const onTouchEnd = (event: React.TouchEvent) => {
+    if (event.touches.length > 0) return
     const origin = start.current
     start.current = null
     const touch = event.changedTouches[0]
     if (!origin || !touch) return
     const dx = touch.clientX - origin.x
     const dy = touch.clientY - origin.y
-    // Solo swipe claramente horizontal (no confundir con scroll vertical).
     if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < Math.abs(dy) * 1.3) return
     if (dx < 0) onNext()
     else onPrev()
   }
 
   return { onTouchStart, onTouchEnd }
+}
+
+function touchDistance(touches: React.TouchList | TouchList): number {
+  if (touches.length < 2) return 0
+  const a = touches[0]!
+  const b = touches[1]!
+  return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY)
+}
+
+interface ZoomGestureOptions {
+  scale: number
+  onScaleChange: (next: number) => void
+  minScale?: number
+  maxScale?: number
+  onFit?: () => void
+}
+
+/** Swipe + pinch-to-zoom + doble tap para ajustar, en un solo handler. */
+export function useReaderTouchGestures(
+  nav: NavHandlers,
+  zoom?: ZoomGestureOptions,
+) {
+  const swipeStart = useRef<{ x: number; y: number } | null>(null)
+  const pinchStart = useRef<{ distance: number; scale: number } | null>(null)
+  const lastTap = useRef(0)
+  const pinching = useRef(false)
+
+  const minScale = zoom?.minScale ?? 0.5
+  const maxScale = zoom?.maxScale ?? 3
+
+  const onTouchStart = (event: React.TouchEvent) => {
+    if (event.touches.length === 2 && zoom) {
+      pinching.current = true
+      swipeStart.current = null
+      pinchStart.current = {
+        distance: touchDistance(event.touches),
+        scale: zoom.scale,
+      }
+      return
+    }
+    if (event.touches.length === 1) {
+      const touch = event.touches[0]
+      if (touch) swipeStart.current = { x: touch.clientX, y: touch.clientY }
+    }
+  }
+
+  const onTouchMove = (event: React.TouchEvent) => {
+    if (event.touches.length === 2 && pinchStart.current && zoom) {
+      event.preventDefault()
+      const dist = touchDistance(event.touches)
+      if (dist <= 0) return
+      const ratio = dist / pinchStart.current.distance
+      const next = Math.min(
+        maxScale,
+        Math.max(minScale, +(pinchStart.current.scale * ratio).toFixed(2)),
+      )
+      zoom.onScaleChange(next)
+    }
+  }
+
+  const onTouchEnd = (event: React.TouchEvent) => {
+    if (event.touches.length >= 2) return
+    if (event.touches.length === 1) {
+      pinchStart.current = null
+      pinching.current = false
+      return
+    }
+
+    pinchStart.current = null
+    const wasPinching = pinching.current
+    pinching.current = false
+    if (wasPinching) return
+
+    const now = Date.now()
+    if (zoom?.onFit && now - lastTap.current < 320) {
+      lastTap.current = 0
+      zoom.onFit()
+      swipeStart.current = null
+      return
+    }
+    lastTap.current = now
+
+    const origin = swipeStart.current
+    swipeStart.current = null
+    const touch = event.changedTouches[0]
+    if (!origin || !touch) return
+    const dx = touch.clientX - origin.x
+    const dy = touch.clientY - origin.y
+    if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < Math.abs(dy) * 1.3) return
+    if (dx < 0) nav.onNext()
+    else nav.onPrev()
+  }
+
+  return { onTouchStart, onTouchMove, onTouchEnd }
+}
+
+interface ReaderZoomControlsProps {
+  scale: number
+  onZoomIn: () => void
+  onZoomOut: () => void
+  onFit: () => void
+  visible?: boolean
+}
+
+/** Controles flotantes de zoom (visibles en modo inmersivo). */
+export function ReaderZoomControls({
+  scale,
+  onZoomIn,
+  onZoomOut,
+  onFit,
+  visible = true,
+}: ReaderZoomControlsProps) {
+  if (!visible) return null
+  return (
+    <div className="absolute bottom-16 right-3 z-30 flex flex-col items-center gap-1 rounded-xl bg-navy/75 p-1.5 shadow-lg backdrop-blur">
+      <ZoomButton onClick={onZoomIn} aria-label="Ampliar">
+        <ZoomIn className="h-4 w-4" />
+      </ZoomButton>
+      <span className="px-1 text-[10px] font-medium tabular-nums text-white">
+        {Math.round(scale * 100)}%
+      </span>
+      <ZoomButton onClick={onZoomOut} aria-label="Reducir">
+        <ZoomOut className="h-4 w-4" />
+      </ZoomButton>
+      <ZoomButton onClick={onFit} aria-label="Ajustar a pantalla" className="mt-0.5">
+        <Maximize2 className="h-3.5 w-3.5" />
+      </ZoomButton>
+    </div>
+  )
+}
+
+function ZoomButton({
+  children,
+  className = '',
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      {...props}
+      className={`inline-flex h-9 w-9 items-center justify-center rounded-lg text-white transition hover:bg-white/15 ${className}`}
+    >
+      {children}
+    </button>
+  )
+}
+
+/** Observa tamaño del contenedor; fuerza recálculo en orientationchange. */
+export function useContainerSize(ref: React.RefObject<HTMLElement | null>) {
+  const [size, setSize] = useState<ContainerSize | null>(null)
+
+  const measure = useCallback(() => {
+    const el = ref.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    if (rect.width > 0 && rect.height > 0) {
+      setSize({ width: rect.width, height: rect.height })
+    }
+  }, [ref])
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    measure()
+    const observer = new ResizeObserver(() => measure())
+    observer.observe(el)
+    const onOrient = () => window.setTimeout(measure, 150)
+    window.addEventListener('orientationchange', onOrient)
+    window.addEventListener('resize', onOrient)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('orientationchange', onOrient)
+      window.removeEventListener('resize', onOrient)
+    }
+  }, [ref, measure])
+
+  return size
+}
+
+interface ContainerSize {
+  width: number
+  height: number
 }
 
 /**

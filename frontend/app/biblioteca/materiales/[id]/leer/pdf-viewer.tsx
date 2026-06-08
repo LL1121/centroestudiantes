@@ -24,11 +24,15 @@ import {
 import { configurePdfWorkerOn, pdfDocumentOptions } from '@/lib/pdf-worker'
 import { READING_SURFACE, type ReadingTheme } from '@/lib/reading-theme'
 
+import { PredictiveReadingControl } from './predictive-reading-ui'
+import { computeFitBaseWidth } from './reader-fit'
 import {
   ReaderNav,
+  ReaderZoomControls,
+  useContainerSize,
   useImmersive,
   useReaderKeys,
-  useSwipe,
+  useReaderTouchGestures,
 } from './reader-controls'
 
 interface Props {
@@ -55,14 +59,15 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
   const [pdf, setPdf] = useState<ReactPdfModule | null>(null)
   const [numPages, setNumPages] = useState<number | null>(null)
   const [pageNumber, setPageNumber] = useState(1)
-  const [scale, setScale] = useState(1.1)
+  const [scale, setScale] = useState(1)
   const deferredScale = useDeferredValue(scale)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [showSearch, setShowSearch] = useState(false)
-  const [width, setWidth] = useState<number | null>(null)
+  const [pageAspect, setPageAspect] = useState<number | null>(null)
   const [pagePending, startPageTransition] = useTransition()
+  const containerSize = useContainerSize(containerRef)
 
   const [matches, setMatches] = useState<number[]>([])
   const [matchIdx, setMatchIdx] = useState(0)
@@ -70,7 +75,13 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
   const documentRef = useRef<PdfDocument | null>(null)
 
   const fileSpec = useMemo(() => ({ url: fileUrl }), [fileUrl])
-  const pageWidth = width ? Math.round(width * deferredScale) : undefined
+  const fitBaseWidth = useMemo(
+    () => computeFitBaseWidth(containerSize, pageAspect),
+    [containerSize, pageAspect],
+  )
+  const pageWidth = fitBaseWidth
+    ? Math.round(fitBaseWidth * deferredScale)
+    : undefined
   const textLayerEnabled = showSearch && search.trim().length > 0
   const zoomPending = scale !== deferredScale
 
@@ -90,14 +101,18 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
   }, [])
 
   useEffect(() => {
-    if (!containerRef.current) return
-    const observer = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect.width
-      if (w) setWidth(w)
+    const doc = documentRef.current
+    if (!doc || !numPages) return
+    let cancelled = false
+    void doc.getPage(pageNumber).then((page) => {
+      if (cancelled) return
+      const vp = page.getViewport({ scale: 1 })
+      setPageAspect(vp.width / vp.height)
     })
-    observer.observe(containerRef.current)
-    return () => observer.disconnect()
-  }, [])
+    return () => {
+      cancelled = true
+    }
+  }, [pageNumber, numPages])
 
   const onDocumentLoad = useCallback((doc: PdfDocument) => {
     documentRef.current = doc
@@ -123,11 +138,21 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
   )
 
   useReaderKeys({ onPrev: goPrev, onNext: goNext })
-  const swipe = useSwipe({ onPrev: goPrev, onNext: goNext })
   const zoomIn = () =>
     setScale((s) => Math.min(MAX_SCALE, +(s + ZOOM_STEP).toFixed(2)))
   const zoomOut = () =>
     setScale((s) => Math.max(MIN_SCALE, +(s - ZOOM_STEP).toFixed(2)))
+  const resetFit = useCallback(() => setScale(1), [])
+  const touchGestures = useReaderTouchGestures(
+    { onPrev: goPrev, onNext: goNext },
+    {
+      scale,
+      onScaleChange: setScale,
+      minScale: MIN_SCALE,
+      maxScale: MAX_SCALE,
+      onFit: resetFit,
+    },
+  )
 
   const runSearch = async (raw: string) => {
     const q = raw.trim().toLowerCase()
@@ -213,7 +238,7 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
       data-reading-theme={readingTheme}
       className={
         immersive
-          ? 'fixed inset-0 z-60 flex flex-col bg-card'
+          ? 'fixed inset-0 z-60 flex h-[100dvh] flex-col bg-card'
           : 'flex min-h-0 flex-1 flex-col rounded-2xl border border-border bg-card shadow-sm'
       }
     >
@@ -232,6 +257,7 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
           onToggleSearch={() => setShowSearch((v) => !v)}
           onToggleImmersive={toggleImmersive}
           fileUrl={fileUrl}
+          predictiveSlot={<PredictiveReadingControl onNext={goNext} />}
         />
       )}
 
@@ -252,9 +278,9 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
       <div className="relative flex min-h-0 flex-1">
         <div
           ref={containerRef}
-          {...swipe}
-          className={`biblioteca-pdf-scroll flex flex-1 items-start justify-center overflow-auto p-3 ${
-            immersive ? '' : 'rounded-b-2xl'
+          {...touchGestures}
+          className={`biblioteca-pdf-scroll flex flex-1 items-center justify-center overflow-auto p-3 ${
+            immersive ? 'min-h-0' : 'rounded-b-2xl'
           } ${READING_SURFACE[readingTheme]}`}
         >
           {error ? (
@@ -315,6 +341,14 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
           canNext={!!numPages && pageNumber < numPages}
           pageLabel={`${pageNumber} / ${numPages ?? '…'}`}
         />
+        <ReaderZoomControls
+          visible={immersive}
+          scale={scale}
+          onZoomIn={zoomIn}
+          onZoomOut={zoomOut}
+          onFit={resetFit}
+        />
+        {immersive && <PredictiveReadingControl onNext={goNext} immersive />}
       </div>
 
       <style jsx global>{`
@@ -358,6 +392,7 @@ interface ToolbarProps {
   onToggleSearch: () => void
   onToggleImmersive: () => void
   fileUrl: string
+  predictiveSlot?: React.ReactNode
 }
 
 function Toolbar({
@@ -374,6 +409,7 @@ function Toolbar({
   onToggleSearch,
   onToggleImmersive,
   fileUrl,
+  predictiveSlot,
 }: ToolbarProps) {
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-border px-2 py-2 sm:px-4">
@@ -423,6 +459,8 @@ function Toolbar({
       >
         <Maximize2 className="h-4 w-4" />
       </ToolbarButton>
+
+      {predictiveSlot}
 
       <a
         href={fileUrl}
