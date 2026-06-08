@@ -12,6 +12,7 @@ from app.core.limiter import chat_rate_limit_key, limiter
 from app.schemas.chat import ChatAskRequest, ChatAskResponse, ChunkSource
 from app.services.embeddings import get_embedding_client
 from app.services.llm_chat import (
+    OFF_TOPIC_MESSAGE,
     STANDARD_REJECT_MESSAGE,
     SYSTEM_PROMPT,
     build_user_prompt,
@@ -139,6 +140,24 @@ async def _prepare_ask(
         material_id=payload.material_id,
         top_k=settings.llm_top_k,
     )
+
+    # Compuerta de relevancia: si el contexto recuperado está demasiado lejos
+    # (consulta off-topic), cortamos sin gastar tokens del LLM.
+    if settings.chat_relevance_enabled:
+        best = min((c.distance for c in chunks), default=None)
+        if best is None or best > settings.chat_relevance_max_distance:
+            logger.info(
+                "Consulta off-topic descartada (best_distance=%s, focus=%s)",
+                best,
+                payload.focus,
+            )
+            return ChatAskResponse(
+                answer=OFF_TOPIC_MESSAGE,
+                blocked=True,
+                blocked_reason="off_topic",
+                focus=payload.focus,
+            )
+
     prompt = build_user_prompt(payload.content, chunks, payload.focus)
     return prompt, chunks, payload.focus
 

@@ -73,7 +73,9 @@ class Settings(BaseSettings):
     llm_backend: str = "fake"        # fake | openai | groq | gemini
     llm_model: str = "gpt-4o-mini"
     llm_temperature: float = 0.2
-    llm_max_tokens: int = 1200
+    # Tope de tokens de salida. Alto para no cortar respuestas largas; el modelo
+    # solo consume lo que realmente genera (8192 es el máximo de gemini flash).
+    llm_max_tokens: int = 8192
     llm_top_k: int = 5
     groq_api_key: str | None = None
     gemini_api_key: str | None = None
@@ -82,6 +84,13 @@ class Settings(BaseSettings):
     # Límite de consultas al asistente (por usuario autenticado).
     # En free tier de Gemini conviene ser conservadores (p. ej. 30/day).
     chat_rate_limit: str = "30/day"
+
+    # Compuerta de relevancia: descarta consultas off-topic ANTES de llamar al
+    # LLM si el mejor chunk recuperado supera esta distancia coseno [0, 2].
+    # Mantener en false hasta reindexar con embeddings reales (gemini), porque
+    # con vectores `fake` las distancias son aleatorias y bloquearía todo.
+    chat_relevance_enabled: bool = False
+    chat_relevance_max_distance: float = 0.75
 
     # Moderación de contenido (OpenAI omni-moderation)
     moderation_enabled: bool = True

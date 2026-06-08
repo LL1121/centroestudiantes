@@ -45,6 +45,13 @@ STANDARD_REJECT_MESSAGE = (
     "con dudas académicas de los apuntes o información institucional."
 )
 
+# Mensaje cuando la consulta no se relaciona con ningún material/contexto.
+OFF_TOPIC_MESSAGE = (
+    "No encontré información relacionada con tu consulta en los materiales del "
+    "Centro de Estudiantes. Probá reformulando la pregunta sobre el contenido de "
+    "un apunte o sobre información institucional."
+)
+
 _PROMPT_INJECTION = re.compile(
     r"(?ix)\b("
     r"ignor[aá](?:te)?\s+(?:las\s+|todas\s+las\s+)?(?:instrucciones|previous|reglas|system)"
@@ -54,13 +61,14 @@ _PROMPT_INJECTION = re.compile(
     r"|jailbreak|developer\s*mode|\bdan\b"
     r"|act\s+as\s+(?:if\s+you\s+were\s+)?(?:an?\s+)?(?:unrestricted|jailbroken|evil)"
     r"|act[uú]a\s+como\s+si\s+no\s+tuvieras\s+restricciones"
+    r"|sos\s+(?:ahora\s+)?(?:un|una)\s+(?:chatgpt|gpt|asistente\s+sin)"
     r")"
 )
 
 _CODE_FROM_SCRATCH = re.compile(
     r"(?ix)\b("
     r"hac[eé]me|hacem[eé]|cre[aá]me|escrib[ií]me|escribime|"
-    r"program[aá]me|implement[aá]me|"
+    r"program[aá]me|implement[aá]me|gener[aá]me|"
     r"write\s+me|build\s+me|code\s+me|make\s+me|create\s+me"
     r")\s+"
     r"(?:un|una|el|la|me|a|an|the)?\s*"
@@ -69,10 +77,49 @@ _CODE_FROM_SCRATCH = re.compile(
     r"app|program|system|application)\b"
 )
 
+# Pedidos de programación inequívocos (términos que NO se usan en consultas
+# académicas normales, para evitar falsos positivos con "función", "clase", etc.).
+_CODE_REQUEST = re.compile(
+    r"(?ix)("
+    r"\b(program[aá]me|program[aá]r|code[aá]me|codific[aá]me|debugge[aá]me?|compil[aá]me?)\b"
+    r"|\b(escrib[ií]|escribime|hac[eé]|hacem[eé]|cre[aá]|gener[aá]|dame|pas[aá]me|mostr[aá]me|"
+    r"arregl[aá]|corre?g[ií])\w*(?:\s+\w+){0,4}?\s+"
+    r"(c[oó]digo|scripts?|regex|expresi[oó]n\s+regular|consultas?\s+sql|querys?|"
+    r"sentencias?\s+sql|comando\s+de\s+(?:bash|terminal|consola))\b"
+    r"|\bc[oó]digo\s+(?:en|de|para)\s+"
+    r"(python|javascript|typescript|java|c\+\+|c\#|php|html|css|sql|bash)\b"
+    r")"
+)
+
 _OFF_SCOPE_TASK = re.compile(
-    r"(?ix)\b(hac[eé]me|cre[aá]me|escrib[ií]me|redact[aá]me|write\s+me)\s+"
+    r"(?ix)\b(hac[eé]me|cre[aá]me|escrib[ií]me|redact[aá]me|gener[aá]me|write\s+me)\s+"
     r"(?:un|una|el|la|a|an|the)?\s*"
     r"(?:ensayo|monograf[ií]a|tesis|trabajo\s+pr[aá]ctico|essay|paper)\b"
+)
+
+# Traducción de textos completos (no de un término puntual del apunte).
+_TRANSLATION = re.compile(
+    r"(?ix)\b(traduc[ií](?:me|r)?|translate)\b(?:\s+\w+){0,3}?\s+"
+    r"(?:este|el|la|todo|esta|the|this)\s+"
+    r"(?:texto|p[aá]rrafo|documento|art[ií]culo|cap[ií]tulo|libro|apunte|"
+    r"text|paragraph|document|chapter|book)\b"
+)
+
+# Pedidos creativos / de entretenimiento sin valor académico.
+_CREATIVE = re.compile(
+    r"(?ix)\b(hac[eé]me|escrib[ií]me|escribime|cre[aá]me|gener[aá]me|invent[aá]me|compon[eé]me)\s+"
+    r"(?:un|una|el|la)?\s*"
+    r"(poema|poes[ií]a|canci[oó]n|chiste|cuento|historia|relato|gui[oó]n|rap|verso|"
+    r"poem|song|joke|story)\b"
+)
+
+_GUARD_RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("prompt_injection", _PROMPT_INJECTION),
+    ("code_from_scratch", _CODE_FROM_SCRATCH),
+    ("code_request", _CODE_REQUEST),
+    ("off_scope_task", _OFF_SCOPE_TASK),
+    ("translation", _TRANSLATION),
+    ("creative_writing", _CREATIVE),
 )
 
 
@@ -87,12 +134,9 @@ def evaluate_guardrail(query: str) -> GuardrailDecision:
     q = query.strip()
     if len(q) < 2:
         return GuardrailDecision(False, "Mensaje vacío")
-    if _PROMPT_INJECTION.search(q):
-        return GuardrailDecision(False, "prompt_injection")
-    if _CODE_FROM_SCRATCH.search(q):
-        return GuardrailDecision(False, "code_from_scratch")
-    if _OFF_SCOPE_TASK.search(q):
-        return GuardrailDecision(False, "off_scope_task")
+    for reason, pattern in _GUARD_RULES:
+        if pattern.search(q):
+            return GuardrailDecision(False, reason)
     return GuardrailDecision(True)
 
 
