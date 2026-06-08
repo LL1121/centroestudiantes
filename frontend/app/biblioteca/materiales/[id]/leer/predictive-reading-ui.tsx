@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
+import { ReaderBodyPortal } from './reader-controls'
 import { CALIB_SAMPLE_MS } from './predictive-reading-utils'
 import { usePredictiveReading } from './predictive-reading'
 
@@ -80,9 +81,9 @@ export function usePredictiveController({
   }
 
   const node = (
-    <>
+    <ReaderBodyPortal>
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="z-120 max-w-md">
+        <DialogContent elevated className="max-w-md">
           <DialogHeader>
             <DialogTitle>Lectura predictiva</DialogTitle>
             <DialogDescription>
@@ -167,7 +168,7 @@ export function usePredictiveController({
           />
         </>
       )}
-    </>
+    </ReaderBodyPortal>
   )
 
   return useMemo(
@@ -191,16 +192,18 @@ export function PredictiveTriggerButton({
 }: TriggerProps) {
   if (immersive) {
     return (
-      <button
-        type="button"
-        onClick={onClick}
-        aria-label="Lectura predictiva"
-        className={`absolute left-3 top-3 z-30 inline-flex h-11 w-11 items-center justify-center rounded-full text-navy shadow-lg ring-1 ring-border backdrop-blur transition ${
-          active ? 'bg-primary/20 text-primary' : 'bg-card/80 hover:bg-card'
-        }`}
-      >
-        <Eye className="h-5 w-5" />
-      </button>
+      <ReaderBodyPortal>
+        <button
+          type="button"
+          onClick={onClick}
+          aria-label="Lectura predictiva"
+          className={`fixed left-3 top-3 z-100 inline-flex h-11 w-11 items-center justify-center rounded-full text-navy shadow-lg ring-1 ring-border backdrop-blur transition ${
+            active ? 'bg-primary/20 text-primary' : 'bg-card/80 hover:bg-card'
+          }`}
+        >
+          <Eye className="h-5 w-5" />
+        </button>
+      </ReaderBodyPortal>
     )
   }
   return (

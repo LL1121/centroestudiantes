@@ -13,7 +13,6 @@ import {
 } from 'lucide-react'
 import {
   useCallback,
-  useDeferredValue,
   useEffect,
   useMemo,
   useRef,
@@ -37,6 +36,7 @@ import {
   useImmersive,
   useReaderKeys,
   useReaderTouchGestures,
+  useWheelZoom,
 } from './reader-controls'
 
 interface Props {
@@ -64,7 +64,6 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
   const [numPages, setNumPages] = useState<number | null>(null)
   const [pageNumber, setPageNumber] = useState(1)
   const [scale, setScale] = useState(1)
-  const deferredScale = useDeferredValue(scale)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -87,11 +86,8 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
   // para que el zoom funcione igual desde el primer momento.
   const baseWidth =
     fitBaseWidth ?? (containerSize ? containerSize.width - 24 : null)
-  const pageWidth = baseWidth
-    ? Math.round(baseWidth * deferredScale)
-    : undefined
+  const pageWidth = baseWidth ? Math.round(baseWidth * scale) : undefined
   const textLayerEnabled = showSearch && search.trim().length > 0
-  const zoomPending = scale !== deferredScale
 
   useEffect(() => {
     let cancelled = false
@@ -146,11 +142,23 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
   )
 
   useReaderKeys({ onPrev: goPrev, onNext: goNext })
-  const zoomIn = () =>
-    setScale((s) => Math.min(MAX_SCALE, +(s + ZOOM_STEP).toFixed(2)))
-  const zoomOut = () =>
-    setScale((s) => Math.max(MIN_SCALE, +(s - ZOOM_STEP).toFixed(2)))
+  const zoomIn = useCallback(
+    () => setScale((s) => Math.min(MAX_SCALE, +(s + ZOOM_STEP).toFixed(2))),
+    [],
+  )
+  const zoomOut = useCallback(
+    () => setScale((s) => Math.max(MIN_SCALE, +(s - ZOOM_STEP).toFixed(2))),
+    [],
+  )
   const resetFit = useCallback(() => setScale(1), [])
+  useWheelZoom(containerRef, {
+    scale,
+    onScaleChange: setScale,
+    minScale: MIN_SCALE,
+    maxScale: MAX_SCALE,
+    step: ZOOM_STEP,
+    immersive,
+  })
   const { pannable, pannableRef } = useHorizontalOverflow(containerRef, [
     pageWidth,
     immersive,
@@ -262,7 +270,6 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
           pageNumber={pageNumber}
           numPages={numPages}
           scale={scale}
-          zoomPending={zoomPending}
           showSearch={showSearch}
           immersive={immersive}
           onPrev={goPrev}
@@ -309,7 +316,7 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
             </div>
           ) : (
             <div
-              className={`relative transition-opacity duration-150 ${pagePending || zoomPending ? 'opacity-80' : 'opacity-100'}`}
+              className={`relative shrink-0 transition-opacity duration-150 ${pagePending ? 'opacity-80' : 'opacity-100'}`}
             >
               <Document
                 file={fileSpec}
@@ -364,7 +371,10 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
         />
         <ReaderZoomControls
           visible={immersive}
+          portaled={immersive}
           scale={scale}
+          minScale={MIN_SCALE}
+          maxScale={MAX_SCALE}
           onZoomIn={zoomIn}
           onZoomOut={zoomOut}
           onFit={resetFit}
@@ -411,7 +421,6 @@ interface ToolbarProps {
   pageNumber: number
   numPages: number | null
   scale: number
-  zoomPending: boolean
   showSearch: boolean
   immersive: boolean
   onPrev: () => void
@@ -428,7 +437,6 @@ function Toolbar({
   pageNumber,
   numPages,
   scale,
-  zoomPending,
   showSearch,
   immersive,
   onPrev,
@@ -463,9 +471,6 @@ function Toolbar({
       </ToolbarButton>
       <span className="text-xs tabular-nums text-muted-foreground">
         {Math.round(scale * 100)}%
-        {zoomPending && (
-          <Loader2 className="ml-1 inline h-3 w-3 animate-spin align-middle" aria-hidden />
-        )}
       </span>
       <ToolbarButton onClick={onZoomIn} disabled={scale >= MAX_SCALE} aria-label="Ampliar">
         <ZoomIn className="h-4 w-4" />

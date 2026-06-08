@@ -8,7 +8,8 @@ import {
   ZoomIn,
   ZoomOut,
 } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 
 /**
  * Controles de lectura compartidos por los visores (PDF / EPUB):
@@ -269,12 +270,24 @@ export function useHorizontalOverflow(
   return { pannable, pannableRef }
 }
 
+/** Monta hijos en document.body (por encima del modo inmersivo z-60). */
+export function ReaderBodyPortal({ children }: { children: ReactNode }) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  if (!mounted) return null
+  return createPortal(children, document.body)
+}
+
 interface ReaderZoomControlsProps {
   scale: number
   onZoomIn: () => void
   onZoomOut: () => void
   onFit: () => void
   visible?: boolean
+  /** En inmersivo: fixed + portal para que los clics no queden tapados. */
+  portaled?: boolean
+  minScale?: number
+  maxScale?: number
 }
 
 /**
@@ -287,11 +300,26 @@ export function ReaderZoomControls({
   onZoomOut,
   onFit,
   visible = true,
+  portaled = false,
+  minScale = 0.5,
+  maxScale = 3,
 }: ReaderZoomControlsProps) {
   if (!visible) return null
-  return (
-    <div className="absolute bottom-3 left-1/2 z-40 flex -translate-x-1/2 items-center gap-0.5 rounded-full bg-navy/80 p-1 shadow-lg backdrop-blur">
-      <ZoomButton onClick={onZoomOut} aria-label="Reducir">
+
+  const pill = (
+    <div
+      className={`pointer-events-auto flex items-center gap-0.5 rounded-full bg-navy/90 p-1 shadow-lg ring-1 ring-white/10 backdrop-blur ${
+        portaled
+          ? 'fixed bottom-3 left-1/2 z-100 -translate-x-1/2'
+          : 'absolute bottom-3 left-1/2 z-40 -translate-x-1/2'
+      }`}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      <ZoomButton
+        onClick={onZoomOut}
+        disabled={scale <= minScale}
+        aria-label="Reducir"
+      >
         <ZoomOut className="h-4 w-4" />
       </ZoomButton>
       <button
@@ -302,7 +330,11 @@ export function ReaderZoomControls({
       >
         {Math.round(scale * 100)}%
       </button>
-      <ZoomButton onClick={onZoomIn} aria-label="Ampliar">
+      <ZoomButton
+        onClick={onZoomIn}
+        disabled={scale >= maxScale}
+        aria-label="Ampliar"
+      >
         <ZoomIn className="h-4 w-4" />
       </ZoomButton>
       <ZoomButton onClick={onFit} aria-label="Ajustar a pantalla">
@@ -310,6 +342,49 @@ export function ReaderZoomControls({
       </ZoomButton>
     </div>
   )
+
+  if (portaled) return <ReaderBodyPortal>{pill}</ReaderBodyPortal>
+  return pill
+}
+
+/** Zoom con rueda del mouse (Ctrl+rueda en cualquier modo; rueda sola en inmersivo). */
+export function useWheelZoom(
+  ref: React.RefObject<HTMLElement | null>,
+  {
+    scale,
+    onScaleChange,
+    minScale = 0.5,
+    maxScale = 3,
+    step = 0.15,
+    immersive = false,
+  }: {
+    scale: number
+    onScaleChange: (next: number) => void
+    minScale?: number
+    maxScale?: number
+    step?: number
+    immersive?: boolean
+  },
+) {
+  const scaleRef = useRef(scale)
+  scaleRef.current = scale
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      if (!immersive && !e.ctrlKey && !e.metaKey) return
+      e.preventDefault()
+      const delta = e.deltaY < 0 ? step : -step
+      const next = Math.min(
+        maxScale,
+        Math.max(minScale, +(scaleRef.current + delta).toFixed(2)),
+      )
+      onScaleChange(next)
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [ref, onScaleChange, minScale, maxScale, step, immersive])
 }
 
 function ZoomButton({
@@ -321,7 +396,7 @@ function ZoomButton({
     <button
       type="button"
       {...props}
-      className={`inline-flex h-9 w-9 items-center justify-center rounded-full text-white transition hover:bg-white/15 ${className}`}
+      className={`inline-flex h-9 w-9 items-center justify-center rounded-full text-white transition hover:bg-white/15 disabled:opacity-40 ${className}`}
     >
       {children}
     </button>
