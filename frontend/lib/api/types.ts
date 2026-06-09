@@ -40,6 +40,20 @@ export type MaterialStatus =
 
 export type TipoArchivo = 'pdf' | 'epub' | 'jpeg' | 'png'
 
+export type ContentKind =
+  | 'apunte_propio'
+  | 'material_docente'
+  | 'dominio_publico'
+  | 'licencia_abierta'
+
+export type CopyrightReportReason =
+  | 'sin_autorizacion'
+  | 'obra_comercial'
+  | 'datos_personales'
+  | 'otro'
+
+export type CopyrightReportStatus = 'pending' | 'dismissed' | 'upheld'
+
 export interface MaterialRead {
   id: string
   titulo: string
@@ -58,6 +72,9 @@ export interface MaterialRead {
   status: MaterialStatus
   storage_key: string
   uploader_id: string | null
+  content_kind: ContentKind | null
+  rights_declared_at: string | null
+  rights_declared_by_id: string | null
   created_at: string
 }
 
@@ -80,4 +97,17 @@ export interface MaterialCitationRead {
   citation_apa: string
   source: 'manual' | 'llm' | 'mixed' | 'fake' | string
   missing_fields: string[]
+}
+
+export interface CopyrightReportRead {
+  id: string
+  material_id: string
+  reporter_email: string
+  reporter_name: string | null
+  reason: CopyrightReportReason
+  details: string
+  status: CopyrightReportStatus
+  reviewed_by_id: string | null
+  created_at: string
+  material: MaterialRead | null
 }

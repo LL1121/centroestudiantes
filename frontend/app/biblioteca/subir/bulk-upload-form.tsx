@@ -13,6 +13,13 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
+import type { ContentKind } from '@/lib/copyright'
+
+import {
+  appendRightsToFormData,
+  RightsDeclarationBlock,
+  validateRightsSubmission,
+} from '../_components/rights-declaration'
 import {
   ACCEPT,
   type ApiErrorBody,
@@ -41,6 +48,8 @@ export function BulkUploadForm() {
 
   const [carrera, setCarrera] = useState('')
   const [tags, setTags] = useState('')
+  const [contentKind, setContentKind] = useState<ContentKind | ''>('')
+  const [rightsAccepted, setRightsAccepted] = useState(false)
   const [items, setItems] = useState<BulkItem[]>([])
   const [dragging, setDragging] = useState(false)
   const [running, setRunning] = useState(false)
@@ -115,6 +124,7 @@ export function BulkUploadForm() {
     data.append('titulo', item.titulo.trim() || titleFromFilename(item.file.name))
     if (carrera.trim()) data.append('carrera', carrera.trim())
     if (tags.trim()) data.append('tags', tags.trim())
+    if (contentKind) appendRightsToFormData(data, contentKind)
 
     try {
       const response = await fetch('/api/materials/upload', { method: 'POST', body: data })
@@ -138,6 +148,11 @@ export function BulkUploadForm() {
     const carreraTrim = carrera.trim()
     if (carreraTrim.length === 1) {
       toast.error('La carrera debe tener al menos 2 caracteres o quedar vacía.')
+      return
+    }
+    const rightsError = validateRightsSubmission(contentKind, rightsAccepted)
+    if (rightsError) {
+      toast.error(rightsError)
       return
     }
     const pending = items.filter((it) => it.status === 'queued' || it.status === 'error')
@@ -205,6 +220,14 @@ export function BulkUploadForm() {
           className="block h-11 w-full rounded-xl border border-border bg-card px-3 text-sm text-navy outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
         />
       </label>
+
+      <RightsDeclarationBlock
+        contentKind={contentKind}
+        onContentKindChange={setContentKind}
+        rightsAccepted={rightsAccepted}
+        onRightsAcceptedChange={setRightsAccepted}
+        disabled={running}
+      />
 
       <div
         onDragOver={(event) => {

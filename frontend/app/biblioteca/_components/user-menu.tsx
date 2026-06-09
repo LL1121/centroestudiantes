@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, useTransition } from 'react'
-import { ChevronDown, LogIn, LogOut, Settings, Shield, UserPlus, Users } from 'lucide-react'
+import { ChevronDown, LogIn, LogOut, Scale, Settings, Shield, UserPlus, Users } from 'lucide-react'
 
 import type { UserRead } from '@/lib/api/types'
 import { bibHref } from '@/lib/biblioteca-path'
@@ -61,6 +61,9 @@ export function UserMenu({ user }: Props) {
             <MenuLink href={bibHref('/biblioteca/registro')} icon={<UserPlus className="h-4 w-4" />}>
               Crear cuenta
             </MenuLink>
+            <MenuLink href={bibHref('/biblioteca/legal')} icon={<Scale className="h-4 w-4" />}>
+              Derechos de autor
+            </MenuLink>
           </Menu>
         )}
       </div>
@@ -109,6 +112,9 @@ export function UserMenu({ user }: Props) {
               Moderación
             </MenuLink>
           )}
+          <MenuLink href={bibHref('/biblioteca/legal')} icon={<Scale className="h-4 w-4" />}>
+            Derechos de autor
+          </MenuLink>
           <div className="my-1 h-px bg-border" />
           <button
             type="button"

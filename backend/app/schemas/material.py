@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.models.material import MaterialStatus, TipoArchivo
+from app.models.material import ContentKind, MaterialStatus, TipoArchivo
 
 
 class MaterialRead(BaseModel):
@@ -28,6 +28,9 @@ class MaterialRead(BaseModel):
     status: MaterialStatus
     storage_key: str
     uploader_id: UUID | None
+    content_kind: ContentKind | None = None
+    rights_declared_at: datetime | None = None
+    rights_declared_by_id: UUID | None = None
     created_at: datetime
 
 

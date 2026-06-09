@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime
 from pathlib import Path as FsPath
 from typing import Annotated
 
@@ -23,7 +24,7 @@ from sqlalchemy import select, text, update
 from app.api.deps import CurrentUser, OptionalCurrentUser, SessionDep
 from app.core.config import get_settings
 from app.models.embedding import Embedding
-from app.models.material import Material, MaterialStatus
+from app.models.material import ContentKind, Material, MaterialStatus
 from app.models.user import UserRole
 from app.schemas.material import (
     MaterialCitationRead,
@@ -88,6 +89,14 @@ def _normalize_carrera(value: str | None) -> str | None:
             "La carrera debe tener al menos 2 caracteres o quedar vacía.",
         )
     return v
+
+
+def _parse_rights_declaration(value: str | None) -> None:
+    if value is None or str(value).strip().lower() not in ("true", "1", "on", "yes"):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Debés aceptar la declaración de derechos para subir material.",
+        )
 
 
 def _assert_can_modify_material(
@@ -268,6 +277,8 @@ async def upload_material(
     editorial: Annotated[str | None, Form(max_length=_EDITORIAL_MAX)] = None,
     isbn: Annotated[str | None, Form(max_length=_ISBN_MAX)] = None,
     ciudad_publicacion: Annotated[str | None, Form(max_length=_CIUDAD_MAX)] = None,
+    content_kind: Annotated[ContentKind, Form()],
+    rights_declaration: Annotated[str, Form()],
 ) -> MaterialUploadResponse:
     """
     Sube un material académico. Flujo estricto:
@@ -277,6 +288,8 @@ async def upload_material(
        recién subida y se devuelve el original).
     4. Crea el registro `Material(status=pending)` para que la Etapa 3 lo indexe.
     """
+    _parse_rights_declaration(rights_declaration)
+
     if file.filename is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Archivo sin nombre.")
 
@@ -345,6 +358,9 @@ async def upload_material(
         sha256=stored.sha256,
         status=MaterialStatus.pending,
         uploader_id=user.id,
+        content_kind=content_kind,
+        rights_declared_at=datetime.now(tz=UTC),
+        rights_declared_by_id=user.id,
     )
     session.add(material)
     try:

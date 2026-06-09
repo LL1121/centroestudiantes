@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import enum
 import uuid
+from datetime import datetime
 
-from sqlalchemy import BigInteger, Enum as PgEnum, ForeignKey, String, Text, text
+from sqlalchemy import BigInteger, DateTime, Enum as PgEnum, ForeignKey, String, Text, text
 from sqlalchemy.dialects.postgresql import ARRAY, UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -59,4 +60,18 @@ class Material(Base, UUIDMixin, TimestampMixin):
 
     uploader_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
+    )
+
+    content_kind: Mapped[ContentKind | None] = mapped_column(
+        PgEnum(ContentKind, name="content_kind"),
+        nullable=True,
+    )
+    rights_declared_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    rights_declared_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("usuarios.id", ondelete="SET NULL"),
+        nullable=True,
     )

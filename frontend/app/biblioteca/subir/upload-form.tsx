@@ -5,7 +5,14 @@ import { useRouter } from 'next/navigation'
 import { useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 
+import type { ContentKind } from '@/lib/copyright'
 import { bibHref } from '@/lib/biblioteca-path'
+
+import {
+  appendRightsToFormData,
+  RightsDeclarationBlock,
+  validateRightsSubmission,
+} from '../_components/rights-declaration'
 
 import {
   ACCEPT,
@@ -29,6 +36,8 @@ export function UploadForm() {
   const [ciudad, setCiudad] = useState('')
   const [isbn, setIsbn] = useState('')
   const [apaOpen, setApaOpen] = useState(false)
+  const [contentKind, setContentKind] = useState<ContentKind | ''>('')
+  const [rightsAccepted, setRightsAccepted] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [dragging, setDragging] = useState(false)
   const [pending, start] = useTransition()
@@ -64,6 +73,12 @@ export function UploadForm() {
       toast.error('La carrera debe tener al menos 2 caracteres o quedar vacía.')
       return
     }
+    const rightsError = validateRightsSubmission(contentKind, rightsAccepted)
+    if (rightsError) {
+      toast.error(rightsError)
+      return
+    }
+    const kind = contentKind as ContentKind
 
     const data = new FormData()
     data.append('file', file)
@@ -76,6 +91,7 @@ export function UploadForm() {
     if (editorial.trim()) data.append('editorial', editorial.trim())
     if (ciudad.trim()) data.append('ciudad_publicacion', ciudad.trim())
     if (isbn.trim()) data.append('isbn', isbn.trim())
+    appendRightsToFormData(data, kind)
 
     start(async () => {
       const response = await fetch('/api/materials/upload', { method: 'POST', body: data })
@@ -102,6 +118,8 @@ export function UploadForm() {
       setCiudad('')
       setIsbn('')
       setApaOpen(false)
+      setContentKind('')
+      setRightsAccepted(false)
       if (inputRef.current) inputRef.current.value = ''
       router.push(bibHref('/biblioteca'))
       router.refresh()
@@ -198,6 +216,14 @@ export function UploadForm() {
           </div>
         )}
       </div>
+
+      <RightsDeclarationBlock
+        contentKind={contentKind}
+        onContentKindChange={setContentKind}
+        rightsAccepted={rightsAccepted}
+        onRightsAcceptedChange={setRightsAccepted}
+        disabled={pending}
+      />
 
       <div
         onDragOver={(event) => {
