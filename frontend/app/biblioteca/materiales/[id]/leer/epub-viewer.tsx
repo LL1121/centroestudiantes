@@ -14,9 +14,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReadingTheme } from '@/lib/reading-theme'
 
 import {
-  PredictiveTriggerButton,
-  usePredictiveController,
-} from './predictive-reading-ui'
+  LectorTriggerButton,
+  useLectorInteligente,
+} from './lector-inteligente'
 import {
   attachSwipe,
   ReaderNav,
@@ -164,7 +164,11 @@ export function EpubViewer({ fileUrl, titulo, readingTheme }: Props) {
   const goPrev = useCallback(() => void renditionRef.current?.prev(), [])
   const goNext = useCallback(() => void renditionRef.current?.next(), [])
 
-  const predictive = usePredictiveController({ onNext: goNext })
+  const lector = useLectorInteligente({
+    onNext: goNext,
+    onPrev: goPrev,
+    scrollRef: containerRef,
+  })
 
   useReaderKeys({ onPrev: goPrev, onNext: goNext })
 
@@ -261,9 +265,9 @@ export function EpubViewer({ fileUrl, titulo, readingTheme }: Props) {
             <Maximize2 className="h-4 w-4" />
           </ToolbarButton>
 
-          <PredictiveTriggerButton
-            onClick={predictive.openModal}
-            active={predictive.enabled}
+          <LectorTriggerButton
+            onClick={lector.openPanel}
+            active={lector.enabled}
           />
 
           <a
@@ -346,9 +350,9 @@ export function EpubViewer({ fileUrl, titulo, readingTheme }: Props) {
             />
           )}
           {immersive && (
-            <PredictiveTriggerButton
-              onClick={predictive.openModal}
-              active={predictive.enabled}
+            <LectorTriggerButton
+              onClick={lector.openPanel}
+              active={lector.enabled}
               immersive
             />
           )}
@@ -373,7 +377,7 @@ export function EpubViewer({ fileUrl, titulo, readingTheme }: Props) {
         )}
       </div>
 
-      {predictive.node}
+      {lector.node}
     </section>
   )
 }

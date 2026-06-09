@@ -24,9 +24,9 @@ import { configurePdfWorkerOn, pdfDocumentOptions } from '@/lib/pdf-worker'
 import { READING_SURFACE, type ReadingTheme } from '@/lib/reading-theme'
 
 import {
-  PredictiveTriggerButton,
-  usePredictiveController,
-} from './predictive-reading-ui'
+  LectorTriggerButton,
+  useLectorInteligente,
+} from './lector-inteligente'
 import { computeFitBaseWidth } from './reader-fit'
 import {
   ReaderNav,
@@ -175,7 +175,11 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
       allowSwipe: () => !pannableRef.current,
     },
   )
-  const predictive = usePredictiveController({ onNext: goNext })
+  const lector = useLectorInteligente({
+    onNext: goNext,
+    onPrev: goPrev,
+    scrollRef: containerRef,
+  })
 
   const runSearch = async (raw: string) => {
     const q = raw.trim().toLowerCase()
@@ -280,9 +284,9 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
           onToggleImmersive={toggleImmersive}
           fileUrl={fileUrl}
           predictiveSlot={
-            <PredictiveTriggerButton
-              onClick={predictive.openModal}
-              active={predictive.enabled}
+            <LectorTriggerButton
+              onClick={lector.openPanel}
+              active={lector.enabled}
             />
           }
         />
@@ -380,15 +384,15 @@ export function PdfViewer({ fileUrl, titulo, readingTheme }: Props) {
           onFit={resetFit}
         />
         {immersive && (
-          <PredictiveTriggerButton
-            onClick={predictive.openModal}
-            active={predictive.enabled}
+          <LectorTriggerButton
+            onClick={lector.openPanel}
+            active={lector.enabled}
             immersive
           />
         )}
       </div>
 
-      {predictive.node}
+      {lector.node}
 
       <style jsx global>{`
         .biblioteca-pdf-page {

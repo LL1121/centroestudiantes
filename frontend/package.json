@@ -4,14 +4,13 @@
   "private": true,
   "packageManager": "pnpm@11.2.2",
   "scripts": {
-    "dev": "node scripts/copy-pdf-worker.mjs && node scripts/copy-mediapipe.mjs && next dev",
-    "build": "node scripts/copy-pdf-worker.mjs && node scripts/copy-mediapipe.mjs && next build",
+    "dev": "node scripts/copy-pdf-worker.mjs && node scripts/copy-webgazer.mjs && next dev",
+    "build": "node scripts/copy-pdf-worker.mjs && node scripts/copy-webgazer.mjs && next build",
     "start": "next start",
     "lint": "eslint ."
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
-    "@mediapipe/tasks-vision": "^0.10.35",
     "@radix-ui/react-accordion": "1.2.12",
     "@radix-ui/react-alert-dialog": "1.1.15",
     "@radix-ui/react-aspect-ratio": "1.1.8",
@@ -62,6 +61,7 @@
     "sonner": "^1.7.1",
     "tailwind-merge": "^3.3.1",
     "vaul": "^1.1.2",
+    "webgazer": "^3.5.3",
     "zod": "^3.24.1"
   },
   "devDependencies": {

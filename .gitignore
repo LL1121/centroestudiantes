@@ -17,3 +17,5 @@ node_modules
 .pnpm-store/
 *.tsbuildinfo
 frontend/public/pdf.worker.min.mjs
+# Generado por scripts/copy-webgazer.mjs (vendor del bundle de WebGazer)
+frontend/public/webgazer/
