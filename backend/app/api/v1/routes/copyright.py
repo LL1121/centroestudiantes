@@ -5,7 +5,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path, status
 from sqlalchemy import select
+
 from app.api.deps import OptionalCurrentUser, SessionDep, require_role
+from app.core.config import get_settings
 from app.models.copyright_report import (
     CopyrightReport,
     CopyrightReportReason,
@@ -21,7 +23,16 @@ from app.schemas.copyright import (
 from app.schemas.material import MaterialRead
 from app.services.rag_processor import process_material_pipeline
 
-router = APIRouter(prefix="/copyright", tags=["copyright"])
+async def _require_copyright_enabled() -> None:
+    if not get_settings().copyright_enforcement_enabled:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+
+
+router = APIRouter(
+    prefix="/copyright",
+    tags=["copyright"],
+    dependencies=[Depends(_require_copyright_enabled)],
+)
 
 ModeratorUser = Annotated[User, Depends(require_role(UserRole.moderador, UserRole.admin))]
 

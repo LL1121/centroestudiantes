@@ -119,6 +119,9 @@ class Settings(BaseSettings):
     clamav_port: int = 3310
     upload_max_bytes: int = 52_428_800  # 50 MB
 
+    # Declaración de derechos, reclamos y cuarentena por copyright (biblioteca institucional).
+    copyright_enforcement_enabled: bool = True
+
     @property
     def is_production(self) -> bool:
         return self.app_env.lower() in {"production", "prod"}

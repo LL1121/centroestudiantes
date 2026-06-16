@@ -132,6 +132,7 @@ services:
       CLAMAV_HOST: biblioteca-clamav
       CLAMAV_PORT: "3310"
       UPLOAD_MAX_BYTES: ${UPLOAD_MAX_BYTES:-52428800}
+      COPYRIGHT_ENFORCEMENT_ENABLED: ${COPYRIGHT_ENFORCEMENT_ENABLED:-false}
     volumes:
       - biblioteca_storage:/app/var/storage
     networks:
@@ -146,6 +147,7 @@ services:
       args:
         # Clave: la biblioteca vive en la RAÍZ del subdominio.
         NEXT_PUBLIC_BIBLIOTECA_ONLY: "true"
+        NEXT_PUBLIC_COPYRIGHT_ENABLED: "false"
     image: biblioteca-web:latest
     container_name: biblioteca-frontend
     hostname: biblioteca-frontend

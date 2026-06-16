@@ -4,6 +4,7 @@ import { ChevronLeft } from 'lucide-react'
 
 import { getOptionalUser } from '@/lib/api/auth'
 import { bibHref } from '@/lib/biblioteca-path'
+import { isCopyrightEnabled } from '@/lib/copyright'
 
 import { SubirTabs } from './subir-tabs'
 
@@ -32,10 +33,15 @@ export default async function SubirPage() {
         <p className="text-xs uppercase tracking-wider text-muted-foreground">Biblioteca Digital</p>
         <h1 className="font-serif text-2xl font-bold text-navy sm:text-3xl">Subir material</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Apuntes, libros y guías. Formatos aceptados: PDF, EPUB, JPEG y PNG.{' '}
-          <Link href={bibHref('/biblioteca/legal')} className="text-primary underline-offset-2 hover:underline">
-            Política de derechos de autor
-          </Link>
+          Apuntes, libros y guías. Formatos aceptados: PDF, EPUB, JPEG y PNG.
+          {isCopyrightEnabled() && (
+            <>
+              {' '}
+              <Link href={bibHref('/biblioteca/legal')} className="text-primary underline-offset-2 hover:underline">
+                Política de derechos de autor
+              </Link>
+            </>
+          )}
         </p>
       </div>
 

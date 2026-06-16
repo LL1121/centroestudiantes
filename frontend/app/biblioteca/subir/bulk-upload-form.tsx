@@ -14,6 +14,7 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import type { ContentKind } from '@/lib/copyright'
+import { isCopyrightEnabled } from '@/lib/copyright'
 
 import {
   appendRightsToFormData,
@@ -124,7 +125,7 @@ export function BulkUploadForm() {
     data.append('titulo', item.titulo.trim() || titleFromFilename(item.file.name))
     if (carrera.trim()) data.append('carrera', carrera.trim())
     if (tags.trim()) data.append('tags', tags.trim())
-    if (contentKind) appendRightsToFormData(data, contentKind)
+    if (isCopyrightEnabled() && contentKind) appendRightsToFormData(data, contentKind)
 
     try {
       const response = await fetch('/api/materials/upload', { method: 'POST', body: data })
@@ -150,7 +151,9 @@ export function BulkUploadForm() {
       toast.error('La carrera debe tener al menos 2 caracteres o quedar vacía.')
       return
     }
-    const rightsError = validateRightsSubmission(contentKind, rightsAccepted)
+    const rightsError = isCopyrightEnabled()
+      ? validateRightsSubmission(contentKind, rightsAccepted)
+      : null
     if (rightsError) {
       toast.error(rightsError)
       return
@@ -221,13 +224,15 @@ export function BulkUploadForm() {
         />
       </label>
 
-      <RightsDeclarationBlock
-        contentKind={contentKind}
-        onContentKindChange={setContentKind}
-        rightsAccepted={rightsAccepted}
-        onRightsAcceptedChange={setRightsAccepted}
-        disabled={running}
-      />
+      {isCopyrightEnabled() && (
+        <RightsDeclarationBlock
+          contentKind={contentKind}
+          onContentKindChange={setContentKind}
+          rightsAccepted={rightsAccepted}
+          onRightsAcceptedChange={setRightsAccepted}
+          disabled={running}
+        />
+      )}
 
       <div
         onDragOver={(event) => {

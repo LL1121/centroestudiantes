@@ -269,8 +269,6 @@ async def upload_material(
     background_tasks: BackgroundTasks,
     file: Annotated[UploadFile, File()],
     titulo: Annotated[str, Form(min_length=_TITULO_MIN, max_length=_TITULO_MAX)],
-    content_kind: Annotated[ContentKind, Form()],
-    rights_declaration: Annotated[str, Form()],
     carrera: Annotated[str | None, Form(max_length=_CARRERA_MAX)] = None,
     descripcion: Annotated[str | None, Form(max_length=2000)] = None,
     tags: Annotated[str | None, Form(max_length=500, description="Tags separados por coma")] = None,
@@ -279,6 +277,8 @@ async def upload_material(
     editorial: Annotated[str | None, Form(max_length=_EDITORIAL_MAX)] = None,
     isbn: Annotated[str | None, Form(max_length=_ISBN_MAX)] = None,
     ciudad_publicacion: Annotated[str | None, Form(max_length=_CIUDAD_MAX)] = None,
+    content_kind: Annotated[ContentKind | None, Form()] = None,
+    rights_declaration: Annotated[str | None, Form()] = None,
 ) -> MaterialUploadResponse:
     """
     Sube un material académico. Flujo estricto:
@@ -288,7 +288,16 @@ async def upload_material(
        recién subida y se devuelve el original).
     4. Crea el registro `Material(status=pending)` para que la Etapa 3 lo indexe.
     """
-    _parse_rights_declaration(rights_declaration)
+    settings = get_settings()
+    if settings.copyright_enforcement_enabled:
+        _parse_rights_declaration(rights_declaration)
+        if content_kind is None:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "Debés indicar el tipo de contenido.",
+            )
+    else:
+        content_kind = None
 
     if file.filename is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Archivo sin nombre.")
@@ -309,7 +318,6 @@ async def upload_material(
             "No pudimos guardar el archivo en el servidor.",
         ) from exc
 
-    settings = get_settings()
     if stored.size_bytes > settings.upload_max_bytes:
         await storage.delete(stored.key)
         raise HTTPException(
@@ -359,8 +367,8 @@ async def upload_material(
         status=MaterialStatus.pending,
         uploader_id=user.id,
         content_kind=content_kind,
-        rights_declared_at=datetime.now(tz=UTC),
-        rights_declared_by_id=user.id,
+        rights_declared_at=datetime.now(tz=UTC) if settings.copyright_enforcement_enabled else None,
+        rights_declared_by_id=user.id if settings.copyright_enforcement_enabled else None,
     )
     session.add(material)
     try:

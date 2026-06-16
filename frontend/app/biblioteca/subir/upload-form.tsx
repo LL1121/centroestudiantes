@@ -6,6 +6,7 @@ import { useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 
 import type { ContentKind } from '@/lib/copyright'
+import { isCopyrightEnabled } from '@/lib/copyright'
 import { bibHref } from '@/lib/biblioteca-path'
 
 import {
@@ -73,12 +74,13 @@ export function UploadForm() {
       toast.error('La carrera debe tener al menos 2 caracteres o quedar vacía.')
       return
     }
-    const rightsError = validateRightsSubmission(contentKind, rightsAccepted)
+    const rightsError = isCopyrightEnabled()
+      ? validateRightsSubmission(contentKind, rightsAccepted)
+      : null
     if (rightsError) {
       toast.error(rightsError)
       return
     }
-    const kind = contentKind as ContentKind
 
     const data = new FormData()
     data.append('file', file)
@@ -91,7 +93,9 @@ export function UploadForm() {
     if (editorial.trim()) data.append('editorial', editorial.trim())
     if (ciudad.trim()) data.append('ciudad_publicacion', ciudad.trim())
     if (isbn.trim()) data.append('isbn', isbn.trim())
-    appendRightsToFormData(data, kind)
+    if (isCopyrightEnabled()) {
+      appendRightsToFormData(data, contentKind as ContentKind)
+    }
 
     start(async () => {
       const response = await fetch('/api/materials/upload', { method: 'POST', body: data })
@@ -217,13 +221,15 @@ export function UploadForm() {
         )}
       </div>
 
-      <RightsDeclarationBlock
-        contentKind={contentKind}
-        onContentKindChange={setContentKind}
-        rightsAccepted={rightsAccepted}
-        onRightsAcceptedChange={setRightsAccepted}
-        disabled={pending}
-      />
+      {isCopyrightEnabled() && (
+        <RightsDeclarationBlock
+          contentKind={contentKind}
+          onContentKindChange={setContentKind}
+          rightsAccepted={rightsAccepted}
+          onRightsAcceptedChange={setRightsAccepted}
+          disabled={pending}
+        />
+      )}
 
       <div
         onDragOver={(event) => {

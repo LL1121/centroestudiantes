@@ -1,7 +1,8 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { ChevronLeft, Mail, Scale, ShieldAlert, Upload } from 'lucide-react'
 
-import { COPYRIGHT_CONTACT_EMAIL } from '@/lib/copyright'
+import { COPYRIGHT_CONTACT_EMAIL, isCopyrightEnabled } from '@/lib/copyright'
 import { bibHref } from '@/lib/biblioteca-path'
 
 export const metadata = {
@@ -9,6 +10,10 @@ export const metadata = {
 }
 
 export default function LegalPage() {
+  if (!isCopyrightEnabled()) {
+    redirect(bibHref('/biblioteca'))
+  }
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
       <Link
