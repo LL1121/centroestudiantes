@@ -142,6 +142,7 @@ services:
       PORT: "3000"
       HOSTNAME: 0.0.0.0
       BACKEND_URL: http://biblioteca-backend:8000
+      COPYRIGHT_ENABLED: ${COPYRIGHT_ENABLED:-true}
     ports:
       - "3005:3000"
 

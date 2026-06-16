@@ -159,6 +159,7 @@ services:
       PORT: "3000"
       HOSTNAME: 0.0.0.0
       BACKEND_URL: http://biblioteca-backend:8000
+      COPYRIGHT_ENABLED: ${COPYRIGHT_ENABLED:-false}
     # Puerto al host opcional: útil para comprobar local con curl.
     # Cloudflare Tunnel NO lo necesita (alcanza por la red interna).
     ports:

@@ -7,13 +7,14 @@ import { ChevronDown, LogIn, LogOut, Scale, Settings, Shield, UserPlus, Users } 
 
 import type { UserRead } from '@/lib/api/types'
 import { bibHref } from '@/lib/biblioteca-path'
-import { isCopyrightEnabled } from '@/lib/copyright'
+import { useCopyrightEnabled } from './copyright-provider'
 
 interface Props {
   user: UserRead | null
 }
 
 export function UserMenu({ user }: Props) {
+  const copyrightEnabled = useCopyrightEnabled()
   const [open, setOpen] = useState(false)
   const router = useRouter()
   const [pending, start] = useTransition()
@@ -62,7 +63,7 @@ export function UserMenu({ user }: Props) {
             <MenuLink href={bibHref('/biblioteca/registro')} icon={<UserPlus className="h-4 w-4" />}>
               Crear cuenta
             </MenuLink>
-            {isCopyrightEnabled() && (
+            {copyrightEnabled && (
               <MenuLink href={bibHref('/biblioteca/legal')} icon={<Scale className="h-4 w-4" />}>
                 Derechos de autor
               </MenuLink>
@@ -115,7 +116,7 @@ export function UserMenu({ user }: Props) {
               Moderación
             </MenuLink>
           )}
-          {isCopyrightEnabled() && (
+          {copyrightEnabled && (
             <MenuLink href={bibHref('/biblioteca/legal')} icon={<Scale className="h-4 w-4" />}>
               Derechos de autor
             </MenuLink>

@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 
 import { getOptionalUser } from '@/lib/api/auth'
 import { bibHref } from '@/lib/biblioteca-path'
-import { isCopyrightEnabled } from '@/lib/copyright'
+import { getCopyrightEnabled } from '@/lib/copyright-config'
 
 import { ModeracionQueue } from './moderacion-queue'
 import { CopyrightReportsQueue } from './copyright-reports-queue'
@@ -27,10 +27,10 @@ export default async function ModeracionPage() {
       <h1 className="font-serif text-2xl font-bold text-navy">Moderación</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Revisión de materiales en cuarentena
-        {isCopyrightEnabled() ? ' y reclamos de derechos de autor' : ''}.
+        {getCopyrightEnabled() ? ' y reclamos de derechos de autor' : ''}.
       </p>
 
-      {isCopyrightEnabled() && (
+      {getCopyrightEnabled() && (
         <section className="mt-8">
           <h2 className="font-serif text-lg font-semibold text-navy">Reclamos de copyright</h2>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -42,7 +42,7 @@ export default async function ModeracionPage() {
         </section>
       )}
 
-      <section className={isCopyrightEnabled() ? 'mt-10' : 'mt-8'}>
+      <section className={getCopyrightEnabled() ? 'mt-10' : 'mt-8'}>
         <h2 className="font-serif text-lg font-semibold text-navy">Cuarentena automática</h2>
         <p className="mt-1 text-xs text-muted-foreground">
           Materiales detectados con contenido explícito o enlaces bloqueados.

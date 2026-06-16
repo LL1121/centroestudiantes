@@ -1,10 +1,3 @@
-/** Activo en despliegues institucionales; desactivar en hosting privado. */
-export const COPYRIGHT_ENABLED = process.env.NEXT_PUBLIC_COPYRIGHT_ENABLED !== 'false'
-
-export function isCopyrightEnabled(): boolean {
-  return COPYRIGHT_ENABLED
-}
-
 /** Tipos de contenido permitidos y textos legales de la biblioteca institucional. */
 
 export type ContentKind =

@@ -11,7 +11,7 @@ import { materialCarreraLabel } from '@/lib/material-labels'
 
 import { CitationButton } from '../../../_components/citation-button'
 import { CopyrightReportDialog } from '../../../_components/copyright-report-dialog'
-import { isCopyrightEnabled } from '@/lib/copyright'
+import { getCopyrightEnabled } from '@/lib/copyright-config'
 import { ReaderChatFab } from '../../../_components/reader-chat-fab'
 import { SimilarMaterials } from '../../../_components/similar-materials'
 import { MaterialViewer } from './material-viewer'
@@ -95,7 +95,7 @@ export default async function LeerPage({ params }: PageProps) {
 
       <SimilarMaterials items={similar} />
 
-      {ready && isCopyrightEnabled() && (
+      {ready && getCopyrightEnabled() && (
         <footer className="mt-4 flex flex-col items-center gap-2 border-t border-border pt-4 text-center">
           <p className="text-[11px] text-muted-foreground">
             Material subido por la comunidad del Centro de Estudiantes. El acceso no transfiere
