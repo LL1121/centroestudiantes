@@ -160,7 +160,7 @@ services:
     # Puerto al host opcional: útil para comprobar local con curl.
     # Cloudflare Tunnel NO lo necesita (alcanza por la red interna).
     ports:
-      - "3005:3000"
+      - "3006:3000"
     networks:
       lyntrix_network:
         aliases:

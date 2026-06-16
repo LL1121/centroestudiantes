@@ -18,6 +18,15 @@ class TipoArchivo(str, enum.Enum):
     png = "png"
 
 
+class ContentKind(str, enum.Enum):
+    """Clasificación declarada por el uploader sobre los derechos del material."""
+
+    apunte_propio = "apunte_propio"
+    material_docente = "material_docente"
+    dominio_publico = "dominio_publico"
+    licencia_abierta = "licencia_abierta"
+
+
 class MaterialStatus(str, enum.Enum):
     pending = "pending"
     processing = "processing"
