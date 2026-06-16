@@ -269,6 +269,8 @@ async def upload_material(
     background_tasks: BackgroundTasks,
     file: Annotated[UploadFile, File()],
     titulo: Annotated[str, Form(min_length=_TITULO_MIN, max_length=_TITULO_MAX)],
+    content_kind: Annotated[ContentKind, Form()],
+    rights_declaration: Annotated[str, Form()],
     carrera: Annotated[str | None, Form(max_length=_CARRERA_MAX)] = None,
     descripcion: Annotated[str | None, Form(max_length=2000)] = None,
     tags: Annotated[str | None, Form(max_length=500, description="Tags separados por coma")] = None,
@@ -277,8 +279,6 @@ async def upload_material(
     editorial: Annotated[str | None, Form(max_length=_EDITORIAL_MAX)] = None,
     isbn: Annotated[str | None, Form(max_length=_ISBN_MAX)] = None,
     ciudad_publicacion: Annotated[str | None, Form(max_length=_CIUDAD_MAX)] = None,
-    content_kind: Annotated[ContentKind, Form()],
-    rights_declaration: Annotated[str, Form()],
 ) -> MaterialUploadResponse:
     """
     Sube un material académico. Flujo estricto:
