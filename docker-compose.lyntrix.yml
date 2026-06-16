@@ -142,8 +142,9 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      # El contexto es la raíz del monorepo: el Dockerfile necesita acceder a packages/
+      context: .
+      dockerfile: apps/biblioteca/Dockerfile
       args:
         # Clave: la biblioteca vive en la RAÍZ del subdominio.
         NEXT_PUBLIC_BIBLIOTECA_ONLY: "true"

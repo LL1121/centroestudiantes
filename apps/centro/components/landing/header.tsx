@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { BookOpen } from 'lucide-react'
 
 import { SITE_LOGO } from '@/lib/branding'
+import { BIBLIOTECA_URL } from '@/lib/links'
 
 export function Header() {
   const [scrolled, setScrolled] = useState(false)
@@ -41,7 +42,7 @@ export function Header() {
         </Link>
 
         <Link
-          href="/biblioteca"
+          href={BIBLIOTECA_URL}
           className="inline-flex items-center gap-2 rounded-full bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition-all duration-200 hover:scale-[1.02] hover:bg-primary/90 hover:shadow sm:px-4 sm:text-sm"
         >
           <BookOpen className="h-4 w-4" aria-hidden />

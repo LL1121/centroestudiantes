@@ -117,13 +117,16 @@ services:
         aliases:
           - centro-backend
 
-  frontend:
+  biblioteca-frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      # El contexto es la raíz del monorepo: el Dockerfile necesita acceder a packages/
+      context: .
+      dockerfile: apps/biblioteca/Dockerfile
+      args:
+        NEXT_PUBLIC_BIBLIOTECA_ONLY: "true"
     image: centro-biblioteca-web:latest
-    container_name: centro-frontend
-    hostname: centro-frontend
+    container_name: centro-biblioteca-frontend
+    hostname: centro-biblioteca-frontend
     restart: unless-stopped
     depends_on:
       - backend
@@ -131,10 +134,34 @@ services:
       NODE_ENV: production
       PORT: "3000"
       HOSTNAME: 0.0.0.0
-      # container_name único en lyntrix_network (evita colisión con otros "backend"/"frontend")
       BACKEND_URL: http://centro-backend:8000
+      COPYRIGHT_ENABLED: ${COPYRIGHT_ENABLED:-true}
     ports:
       - "3005:3000"
+    networks:
+      lyntrix_network:
+        aliases:
+          - centro-biblioteca-frontend
+
+  centro-frontend:
+    build:
+      # El contexto es la raíz del monorepo: el Dockerfile necesita acceder a packages/
+      context: .
+      dockerfile: apps/centro/Dockerfile
+    image: centro-landing-web:latest
+    container_name: centro-frontend
+    hostname: centro-frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+      # URL de la biblioteca — ajustar según topología de dominio:
+      #   Subdominios:   NEXT_PUBLIC_BIBLIOTECA_URL=https://biblioteca.ies9018malargue.edu.ar
+      #   Mismo dominio: NEXT_PUBLIC_BIBLIOTECA_URL=/biblioteca
+      NEXT_PUBLIC_BIBLIOTECA_URL: ${NEXT_PUBLIC_BIBLIOTECA_URL:-https://biblioteca.ies9018malargue.edu.ar}
+    ports:
+      - "3007:3000"
     networks:
       lyntrix_network:
         aliases:

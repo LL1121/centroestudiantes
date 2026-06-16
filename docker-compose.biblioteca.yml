@@ -127,8 +127,9 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      # El contexto es la raíz del monorepo: el Dockerfile necesita acceder a packages/
+      context: .
+      dockerfile: apps/biblioteca/Dockerfile
       args:
         NEXT_PUBLIC_BIBLIOTECA_ONLY: "true"
     image: biblioteca-web:latest

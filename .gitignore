@@ -16,9 +16,9 @@ node_modules
 .DS_Store
 .pnpm-store/
 *.tsbuildinfo
-frontend/public/pdf.worker.min.mjs
+apps/biblioteca/public/pdf.worker.min.mjs
 # Generado por scripts/copy-webgazer.mjs (vendor del bundle de WebGazer)
-frontend/public/webgazer/
+apps/biblioteca/public/webgazer/
 
 # Backups de la biblioteca (DB dumps + storage + .env) — NUNCA versionar
 /backups/
