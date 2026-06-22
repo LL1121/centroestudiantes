@@ -180,7 +180,7 @@ services:
       PORT: "3000"
       HOSTNAME: 0.0.0.0
     ports:
-      - "3008:3000"
+      - "3007:3000"
     networks:
       lyntrix_network:
         aliases:

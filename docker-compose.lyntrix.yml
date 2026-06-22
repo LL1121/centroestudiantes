@@ -185,7 +185,7 @@ services:
       HOSTNAME: 0.0.0.0
     # Cloudflare Tunnel: calendario.lyntrix.com.ar → http://centro-calendario:3000
     ports:
-      - "3008:3000"
+      - "3007:3000"
     networks:
       lyntrix_network:
         aliases:
