@@ -167,6 +167,25 @@ services:
         aliases:
           - centro-frontend
 
+  calendario-frontend:
+    build:
+      context: .
+      dockerfile: apps/calendario/Dockerfile
+    image: centro-calendario-web:latest
+    container_name: centro-calendario
+    hostname: centro-calendario
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "3008:3000"
+    networks:
+      lyntrix_network:
+        aliases:
+          - centro-calendario
+
 networks:
   lyntrix_network:
     external: true
