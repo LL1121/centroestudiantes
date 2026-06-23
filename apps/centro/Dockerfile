@@ -23,10 +23,9 @@ RUN corepack enable \
     && corepack prepare "pnpm@${PNPM_VERSION}" --activate
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/centro/node_modules ./apps/centro/node_modules 2>/dev/null || true
-COPY --from=deps /app/packages/tsconfig/node_modules ./packages/tsconfig/node_modules 2>/dev/null || true
+COPY --from=deps /app/apps/centro/node_modules ./apps/centro/node_modules
 
-# Copiamos el código fuente de las partes necesarias
+COPY pnpm-workspace.yaml package.json ./
 COPY packages/tsconfig/ ./packages/tsconfig/
 COPY packages/branding/ ./packages/branding/
 COPY apps/centro/ ./apps/centro/
