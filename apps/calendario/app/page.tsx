@@ -31,7 +31,7 @@ export default async function CalendarPage() {
       <footer className="border-t border-border py-4 text-center text-xs text-muted-foreground">
         Datos de feriados:{' '}
         <a
-          href="https://nager.date"
+          href="https://date.nager.at"
           target="_blank"
           rel="noopener noreferrer"
           className="underline-offset-2 hover:underline"
