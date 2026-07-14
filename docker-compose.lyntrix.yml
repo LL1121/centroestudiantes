@@ -44,20 +44,13 @@ services:
           "CMD-SHELL",
           "pg_isready -U ${POSTGRES_USER:-postgres} -q && PGPASSWORD=\"$$POSTGRES_PASSWORD\" psql -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d postgres -c 'SELECT 1' >/dev/null",
         ]
-      interval: 5s
+      interval: 30s
       timeout: 5s
       retries: 15
       start_period: 30s
 
-  clamav:
-    image: clamav/clamav:1.4
-    container_name: biblioteca-clamav
-    hostname: biblioteca-clamav
-    restart: unless-stopped
-    networks:
-      lyntrix_network:
-        aliases:
-          - biblioteca-clamav
+  # ClamAV no se levanta en Lyntrix: ANTIVIRUS_ENABLED=false y el demonio come ~1GB RAM.
+  # Si más adelante lo necesitás, descomentá el servicio y el depends_on del backend.
 
   backend:
     build:
@@ -70,8 +63,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      clamav:
-        condition: service_started
+    # El HEALTHCHECK del Dockerfile (cada 2m) alcanza; no hace falta uno más agresivo acá.
     env_file:
       - .env
     environment:

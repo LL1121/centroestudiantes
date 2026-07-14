@@ -15,6 +15,17 @@ from app.core.user_errors import user_message
 
 logger = logging.getLogger(__name__)
 
+
+class _SkipProbeAccessLog(logging.Filter):
+    """Evita flood de logs (y overhead) por healthchecks de Docker/orquestadores."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        return "/health" not in msg
+
+
+logging.getLogger("uvicorn.access").addFilter(_SkipProbeAccessLog())
+
 settings = get_settings()
 
 app = FastAPI(

@@ -33,7 +33,8 @@ RUN chmod +x ./entrypoint.sh \
 
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+# Intervalo amplio: no hace falta sondear cada 30s y el log/CPU no aportan valor.
+HEALTHCHECK --interval=2m --timeout=5s --start-period=40s --retries=3 \
     CMD curl -fsS http://127.0.0.1:8000/health || exit 1
 
 ENTRYPOINT ["./entrypoint.sh"]
