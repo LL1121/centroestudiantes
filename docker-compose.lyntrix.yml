@@ -14,6 +14,10 @@
 # Cloudflare Tunnel (ingress de cloudflared, mismo network):
 #   - hostname: biblioteca.lyntrix.com.ar
 #     service: http://biblioteca-frontend:3000
+#   - hostname: calendario.lyntrix.com.ar
+#     service: http://centro-calendario:3000
+#   - hostname: votacion.lyntrix.com.ar
+#     service: http://centro-votacion:3000
 #   - service: http_status:404
 # ============================================================================
 services:
@@ -82,7 +86,7 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: "30"
       REFRESH_TOKEN_EXPIRE_DAYS: "14"
 
-      CORS_ORIGINS: ${CORS_ORIGINS:-https://biblioteca.lyntrix.com.ar}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://biblioteca.lyntrix.com.ar,https://votacion.lyntrix.com.ar}
 
       STORAGE_BACKEND: local
       STORAGE_ROOT: /app/var/storage
@@ -182,6 +186,29 @@ services:
       lyntrix_network:
         aliases:
           - centro-calendario
+
+  votacion-frontend:
+    build:
+      context: .
+      dockerfile: apps/votacion/Dockerfile
+    image: centro-votacion-web:latest
+    container_name: centro-votacion
+    hostname: centro-votacion
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+      BACKEND_URL: http://biblioteca-backend:8000
+    # Cloudflare Tunnel: votacion.lyntrix.com.ar → http://centro-votacion:3000
+    ports:
+      - "3008:3000"
+    networks:
+      lyntrix_network:
+        aliases:
+          - centro-votacion
 
 networks:
   lyntrix_network:
