@@ -1,8 +1,26 @@
+# ============================================================================
+# Producción — Centro de Estudiantes (Caddy + proxy_net)
+#
+# Requisitos:
+#   - Red Docker externa: docker network create proxy_net
+#   - Archivo .env en la raíz (ver .env.example)
+#
+# Levantar:
+#   docker compose up -d --build
+#
+# Caddy (ejemplos de reverse_proxy por nombre de servicio):
+#   biblioteca.tudominio → centro_estudiantes_biblioteca_web:3000
+#   calendario.tudominio → centro_estudiantes_calendario_web:3000
+#   votacion.tudominio   → centro_estudiantes_votacion_web:3000
+#
+# NO hay mapeo de puertos al host: solo tráfico vía proxy_net.
+# ============================================================================
+
 services:
-  db:
+  centro_estudiantes_db:
     image: pgvector/pgvector:pg16
-    container_name: centro-postgres
-    hostname: centro-postgres
+    container_name: centro_estudiantes_db
+    hostname: centro_estudiantes_db
     restart: unless-stopped
     entrypoint: ["/bin/bash", "/usr/local/bin/docker-entrypoint-wrapper.sh"]
     command: ["postgres"]
@@ -13,48 +31,33 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Definí POSTGRES_PASSWORD en .env}
       POSTGRES_DB: ${POSTGRES_DB:-centro}
     volumes:
-      - centro_pgdata:/var/lib/postgresql/data
+      - centro_estudiantes_pgdata:/var/lib/postgresql/data
       - ./docker/db/docker-entrypoint-wrapper.sh:/usr/local/bin/docker-entrypoint-wrapper.sh:ro
       - ./docker/db/sync-password.sh:/usr/local/bin/sync-password.sh:ro
     networks:
-      lyntrix_network:
-        # Alias único para evitar colisiones con otros stacks que tengan un servicio "db"
-        aliases:
-          - centro-postgres
-          - centro-db
+      - centro_internal
     healthcheck:
-      # Espera a que el sync de contraseña haya aplicado (auth TCP con .env)
       test:
         [
           "CMD-SHELL",
           "pg_isready -U ${POSTGRES_USER:-postgres} -q && PGPASSWORD=\"$$POSTGRES_PASSWORD\" psql -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d postgres -c 'SELECT 1' >/dev/null",
         ]
-      interval: 5s
+      interval: 30s
       timeout: 5s
       retries: 15
       start_period: 30s
 
-  clamav:
-    image: clamav/clamav:1.4
-    container_name: centro-clamav
-    restart: unless-stopped
-    networks:
-      lyntrix_network:
-        aliases:
-          - centro-clamav
-
-  backend:
+  centro_estudiantes_api:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: centro-biblioteca-api:latest
-    container_name: centro-backend
+    image: centro_estudiantes_api:latest
+    container_name: centro_estudiantes_api
+    hostname: centro_estudiantes_api
     restart: unless-stopped
     depends_on:
-      db:
+      centro_estudiantes_db:
         condition: service_healthy
-      clamav:
-        condition: service_started
     env_file:
       - .env
     environment:
@@ -63,26 +66,22 @@ services:
       APP_HOST: 0.0.0.0
       APP_PORT: "8000"
 
-      # La URL se arma en app/core/config.py desde estas variables (password escapado).
-      # Usamos el container_name (único globalmente en la red) para evitar colisiones
-      # con otros stacks que también declaren un servicio "db" en lyntrix_network.
-      POSTGRES_HOST: centro-postgres
+      POSTGRES_HOST: centro_estudiantes_db
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Definí POSTGRES_PASSWORD en .env}
       POSTGRES_DB: ${POSTGRES_DB:-centro}
 
       JWT_SECRET: ${JWT_SECRET:?Definí JWT_SECRET en .env}
       JWT_ALGORITHM: HS256
-      ACCESS_TOKEN_EXPIRE_MINUTES: "30"
-      REFRESH_TOKEN_EXPIRE_DAYS: "14"
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-14}
 
-      CORS_ORIGINS: ${CORS_ORIGINS:-https://biblioteca.ies9018malargue.edu.ar}
+      CORS_ORIGINS: ${CORS_ORIGINS:?Definí CORS_ORIGINS en .env}
 
       STORAGE_BACKEND: local
       STORAGE_ROOT: /app/var/storage
 
       EMBEDDING_DIM: "1536"
-      # fake | openai | gemini (gemini = free tier, reusa GEMINI_API_KEY)
       EMBEDDING_BACKEND: ${EMBEDDING_BACKEND:-gemini}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-gemini-embedding-001}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
@@ -105,91 +104,95 @@ services:
       CHAT_RELEVANCE_MAX_DISTANCE: ${CHAT_RELEVANCE_MAX_DISTANCE:-0.75}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+
+      MODERATION_ENABLED: ${MODERATION_ENABLED:-true}
+      MODERATION_MAX_PAGES: ${MODERATION_MAX_PAGES:-20}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:?Definí PUBLIC_APP_URL en .env}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
       REQUIRE_EMAIL_VERIFIED: ${REQUIRE_EMAIL_VERIFIED:-false}
       ANTIVIRUS_ENABLED: ${ANTIVIRUS_ENABLED:-false}
-      CLAMAV_HOST: centro-clamav
-      CLAMAV_PORT: "3310"
       UPLOAD_MAX_BYTES: ${UPLOAD_MAX_BYTES:-52428800}
+      COPYRIGHT_ENFORCEMENT_ENABLED: ${COPYRIGHT_ENFORCEMENT_ENABLED:-false}
     volumes:
-      - centro_storage:/app/var/storage
+      - centro_estudiantes_storage:/app/var/storage
     networks:
-      lyntrix_network:
-        aliases:
-          - centro-backend
+      - centro_internal
+    # Sin `ports:` — solo red interna Docker
 
-  biblioteca-frontend:
+  centro_estudiantes_biblioteca_web:
     build:
-      # El contexto es la raíz del monorepo: el Dockerfile necesita acceder a packages/
       context: .
       dockerfile: apps/biblioteca/Dockerfile
       args:
         NEXT_PUBLIC_BIBLIOTECA_ONLY: "true"
-    image: centro-biblioteca-web:latest
-    container_name: centro-biblioteca-frontend
-    hostname: centro-biblioteca-frontend
+        NEXT_PUBLIC_COPYRIGHT_ENABLED: ${NEXT_PUBLIC_COPYRIGHT_ENABLED:-false}
+    image: centro_estudiantes_biblioteca_web:latest
+    container_name: centro_estudiantes_biblioteca_web
+    hostname: centro_estudiantes_biblioteca_web
     restart: unless-stopped
     depends_on:
-      - backend
+      - centro_estudiantes_api
+    env_file:
+      - .env
     environment:
       NODE_ENV: production
       PORT: "3000"
       HOSTNAME: 0.0.0.0
-      BACKEND_URL: http://centro-backend:8000
-      COPYRIGHT_ENABLED: ${COPYRIGHT_ENABLED:-true}
-    ports:
-      - "3005:3000"
+      BACKEND_URL: http://centro_estudiantes_api:8000
+      COPYRIGHT_ENABLED: ${COPYRIGHT_ENABLED:-false}
     networks:
-      lyntrix_network:
-        aliases:
-          - centro-biblioteca-frontend
+      - centro_internal
+      - proxy_net
+    # Caddy: reverse_proxy centro_estudiantes_biblioteca_web:3000
 
-  centro-frontend:
-    build:
-      # El contexto es la raíz del monorepo: el Dockerfile necesita acceder a packages/
-      context: .
-      dockerfile: apps/centro/Dockerfile
-    image: centro-landing-web:latest
-    container_name: centro-frontend
-    hostname: centro-frontend
-    restart: unless-stopped
-    environment:
-      NODE_ENV: production
-      PORT: "3000"
-      HOSTNAME: 0.0.0.0
-      # URL de la biblioteca — ajustar según topología de dominio:
-      #   Subdominios:   NEXT_PUBLIC_BIBLIOTECA_URL=https://biblioteca.ies9018malargue.edu.ar
-      #   Mismo dominio: NEXT_PUBLIC_BIBLIOTECA_URL=/biblioteca
-      NEXT_PUBLIC_BIBLIOTECA_URL: ${NEXT_PUBLIC_BIBLIOTECA_URL:-https://biblioteca.ies9018malargue.edu.ar}
-    ports:
-      - "3007:3000"
-    networks:
-      lyntrix_network:
-        aliases:
-          - centro-frontend
-
-  calendario-frontend:
+  centro_estudiantes_calendario_web:
     build:
       context: .
       dockerfile: apps/calendario/Dockerfile
-    image: centro-calendario-web:latest
-    container_name: centro-calendario
-    hostname: centro-calendario
+    image: centro_estudiantes_calendario_web:latest
+    container_name: centro_estudiantes_calendario_web
+    hostname: centro_estudiantes_calendario_web
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: "3000"
       HOSTNAME: 0.0.0.0
-    ports:
-      - "3007:3000"
     networks:
-      lyntrix_network:
-        aliases:
-          - centro-calendario
+      - proxy_net
+    # Caddy: reverse_proxy centro_estudiantes_calendario_web:3000
+
+  centro_estudiantes_votacion_web:
+    build:
+      context: .
+      dockerfile: apps/votacion/Dockerfile
+    image: centro_estudiantes_votacion_web:latest
+    container_name: centro_estudiantes_votacion_web
+    hostname: centro_estudiantes_votacion_web
+    restart: unless-stopped
+    depends_on:
+      - centro_estudiantes_api
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+      BACKEND_URL: http://centro_estudiantes_api:8000
+    networks:
+      - centro_internal
+      - proxy_net
+    # Caddy: reverse_proxy centro_estudiantes_votacion_web:3000
 
 networks:
-  lyntrix_network:
+  proxy_net:
     external: true
+  centro_internal:
+    driver: bridge
 
 volumes:
-  centro_pgdata:
-  centro_storage:
+  centro_estudiantes_pgdata:
+  centro_estudiantes_storage:

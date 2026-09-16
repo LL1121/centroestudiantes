@@ -7,9 +7,11 @@ from app.models.copyright_report import (
 )
 from app.models.embedding import Embedding
 from app.models.material import ContentKind, Material, MaterialStatus, TipoArchivo
+from app.models.profesor import Profesor
 from app.models.refresh_token import RefreshToken
 from app.models.twofa_backup_code import TwofaBackupCode
 from app.models.user import User, UserRole
+from app.models.voto import Voto
 
 __all__ = [
     "Anuncio",
@@ -22,9 +24,11 @@ __all__ = [
     "Embedding",
     "Material",
     "MaterialStatus",
+    "Profesor",
     "RefreshToken",
     "TwofaBackupCode",
     "TipoArchivo",
     "User",
     "UserRole",
+    "Voto",
 ]
