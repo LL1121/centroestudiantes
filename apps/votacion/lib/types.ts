@@ -10,4 +10,5 @@ export interface LeaderboardEntry {
   puesto: number
 }
 
-export const VOTO_EMITIDO_KEY = 'voto_emitido'
+// Bump al reiniciar la votación (TRUNCATE votos) para invalidar flags viejos del browser.
+export const VOTO_EMITIDO_KEY = 'voto_emitido_r2'
