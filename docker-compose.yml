@@ -1,27 +1,27 @@
 # ============================================================================
-# Producción — Centro de Estudiantes (Caddy + proxy_net)
+# Producción — Centro de Estudiantes (Caddy + proxy_net + postgres_core)
 #
-# Cada app web es un servicio aislado en proxy_net (sin ports al host).
-# Una sola Postgres + una sola API las comparten biblioteca y votación.
-# Calendario y landing no necesitan DB.
+# - Apps web aisladas en proxy_net (sin ports al host).
+# - NO levanta Postgres propio: usa el contenedor central `postgres_core`.
+# - biblioteca + votación → centro_api → postgres_core (misma DB dedicada).
 #
 # Requisitos:
-#   docker network create proxy_net
-#   cp .env.example .env  # completar
+#   - docker network create proxy_net
+#   - postgres_core corriendo en proxy_net (imagen con pgvector)
+#   - Ejecutar docker/db/init-postgres-core.sql una vez (ver comentarios del SQL)
+#   - cp .env.example .env
 #
 # Levantar:
 #   docker compose up -d --build
 #
-# Caddy (reverse_proxy por container_name / servicio):
-#   landing.tudominio     → centro_landing:3000
-#   biblioteca.tudominio  → centro_biblioteca:3000
-#   votacion.tudominio    → centro_votacion:3000
-#   calendario.tudominio  → centro_calendario:3000
+# Caddy:
+#   landing     → centro_landing:3000
+#   biblioteca  → centro_biblioteca:3000
+#   votacion    → centro_votacion:3000
+#   calendario  → centro_calendario:3000
 # ============================================================================
 
 services:
-  # ── Apps públicas (solo proxy_net, Caddy las alcanza) ─────────────────────
-
   centro_landing:
     build:
       context: .
@@ -30,11 +30,13 @@ services:
     container_name: centro_landing
     hostname: centro_landing
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       NODE_ENV: production
       PORT: "3000"
       HOSTNAME: 0.0.0.0
-      NEXT_PUBLIC_BIBLIOTECA_URL: ${NEXT_PUBLIC_BIBLIOTECA_URL:-https://biblioteca.tudominio.com}
+      NEXT_PUBLIC_BIBLIOTECA_URL: ${NEXT_PUBLIC_BIBLIOTECA_URL}
     networks:
       - proxy_net
 
@@ -61,7 +63,6 @@ services:
       COPYRIGHT_ENABLED: ${COPYRIGHT_ENABLED:-false}
     networks:
       - proxy_net
-      - centro_internal
 
   centro_votacion:
     build:
@@ -82,7 +83,6 @@ services:
       BACKEND_URL: http://centro_api:8000
     networks:
       - proxy_net
-      - centro_internal
 
   centro_calendario:
     build:
@@ -99,40 +99,7 @@ services:
     networks:
       - proxy_net
 
-  # ── Infra compartida (NO va a Caddy; solo red interna) ────────────────────
-  # Misma DB + misma API para biblioteca y votación (tablas profesores/votos
-  # viven en el mismo Postgres que la biblioteca).
-
-  centro_db:
-    image: pgvector/pgvector:pg16
-    container_name: centro_db
-    hostname: centro_db
-    restart: unless-stopped
-    entrypoint: ["/bin/bash", "/usr/local/bin/docker-entrypoint-wrapper.sh"]
-    command: ["postgres"]
-    env_file:
-      - .env
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Definí POSTGRES_PASSWORD en .env}
-      POSTGRES_DB: ${POSTGRES_DB:-centro}
-    volumes:
-      - centro_pgdata:/var/lib/postgresql/data
-      - ./docker/db/docker-entrypoint-wrapper.sh:/usr/local/bin/docker-entrypoint-wrapper.sh:ro
-      - ./docker/db/sync-password.sh:/usr/local/bin/sync-password.sh:ro
-    networks:
-      - centro_internal
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U ${POSTGRES_USER:-postgres} -q && PGPASSWORD=\"$$POSTGRES_PASSWORD\" psql -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d postgres -c 'SELECT 1' >/dev/null",
-        ]
-      interval: 30s
-      timeout: 5s
-      retries: 15
-      start_period: 30s
-
+  # API compartida (biblioteca + votación). Habla con postgres_core por proxy_net.
   centro_api:
     build:
       context: ./backend
@@ -141,9 +108,6 @@ services:
     container_name: centro_api
     hostname: centro_api
     restart: unless-stopped
-    depends_on:
-      centro_db:
-        condition: service_healthy
     env_file:
       - .env
     environment:
@@ -151,11 +115,7 @@ services:
       APP_DEBUG: "false"
       APP_HOST: 0.0.0.0
       APP_PORT: "8000"
-
-      POSTGRES_HOST: centro_db
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Definí POSTGRES_PASSWORD en .env}
-      POSTGRES_DB: ${POSTGRES_DB:-centro}
+      DATABASE_URL: ${DATABASE_URL}
 
       JWT_SECRET: ${JWT_SECRET:?Definí JWT_SECRET en .env}
       JWT_ALGORITHM: HS256
@@ -206,14 +166,11 @@ services:
     volumes:
       - centro_storage:/app/var/storage
     networks:
-      - centro_internal
+      - proxy_net
 
 networks:
   proxy_net:
     external: true
-  centro_internal:
-    driver: bridge
 
 volumes:
-  centro_pgdata:
   centro_storage:
