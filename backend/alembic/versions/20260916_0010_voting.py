@@ -19,7 +19,7 @@ down_revision: str | Sequence[str] | None = "0009_copyright"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-# Docentes IES (Docentes.pdf) — 63 nombres únicos, formato "Apellido, Nombre".
+# Docentes IES (Docentes.pdf) — 64 nombres únicos, formato "Apellido, Nombre".
 PROFESORES_SEED: list[str] = [
     "Alaimo, Andrea",
     "Alcala, Christian",
@@ -31,6 +31,7 @@ PROFESORES_SEED: list[str] = [
     "Barrera, Cecilia",
     "Barrio, Martin",
     "Bavaresco, German",
+    "Beron, Johana",
     "Bisacco, Alejandro",
     "Bondino, Valeria",
     "Bouille, Vanessa",
