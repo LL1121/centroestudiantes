@@ -114,7 +114,7 @@ export function Leaderboard({ initialEntries = [], intervalMs = 2500 }: Props) {
           <Trophy className="h-5 w-5 text-accent" aria-hidden />
           <div>
             <h2 className="font-serif text-lg font-bold text-navy">Ranking en vivo</h2>
-            <p className="text-xs text-muted-foreground">Top 10 · se actualiza solo</p>
+            <p className="text-xs text-muted-foreground">Top 10</p>
           </div>
         </div>
         <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
