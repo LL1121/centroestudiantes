@@ -1,26 +1,112 @@
 # ============================================================================
 # Producción — Centro de Estudiantes (Caddy + proxy_net)
 #
+# Cada app web es un servicio aislado en proxy_net (sin ports al host).
+# Una sola Postgres + una sola API las comparten biblioteca y votación.
+# Calendario y landing no necesitan DB.
+#
 # Requisitos:
-#   - Red Docker externa: docker network create proxy_net
-#   - Archivo .env en la raíz (ver .env.example)
+#   docker network create proxy_net
+#   cp .env.example .env  # completar
 #
 # Levantar:
 #   docker compose up -d --build
 #
-# Caddy (ejemplos de reverse_proxy por nombre de servicio):
-#   biblioteca.tudominio → centro_estudiantes_biblioteca_web:3000
-#   calendario.tudominio → centro_estudiantes_calendario_web:3000
-#   votacion.tudominio   → centro_estudiantes_votacion_web:3000
-#
-# NO hay mapeo de puertos al host: solo tráfico vía proxy_net.
+# Caddy (reverse_proxy por container_name / servicio):
+#   landing.tudominio     → centro_landing:3000
+#   biblioteca.tudominio  → centro_biblioteca:3000
+#   votacion.tudominio    → centro_votacion:3000
+#   calendario.tudominio  → centro_calendario:3000
 # ============================================================================
 
 services:
-  centro_estudiantes_db:
+  # ── Apps públicas (solo proxy_net, Caddy las alcanza) ─────────────────────
+
+  centro_landing:
+    build:
+      context: .
+      dockerfile: apps/centro/Dockerfile
+    image: centro_landing:latest
+    container_name: centro_landing
+    hostname: centro_landing
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_BIBLIOTECA_URL: ${NEXT_PUBLIC_BIBLIOTECA_URL:-https://biblioteca.tudominio.com}
+    networks:
+      - proxy_net
+
+  centro_biblioteca:
+    build:
+      context: .
+      dockerfile: apps/biblioteca/Dockerfile
+      args:
+        NEXT_PUBLIC_BIBLIOTECA_ONLY: "true"
+        NEXT_PUBLIC_COPYRIGHT_ENABLED: ${NEXT_PUBLIC_COPYRIGHT_ENABLED:-false}
+    image: centro_biblioteca:latest
+    container_name: centro_biblioteca
+    hostname: centro_biblioteca
+    restart: unless-stopped
+    depends_on:
+      - centro_api
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+      BACKEND_URL: http://centro_api:8000
+      COPYRIGHT_ENABLED: ${COPYRIGHT_ENABLED:-false}
+    networks:
+      - proxy_net
+      - centro_internal
+
+  centro_votacion:
+    build:
+      context: .
+      dockerfile: apps/votacion/Dockerfile
+    image: centro_votacion:latest
+    container_name: centro_votacion
+    hostname: centro_votacion
+    restart: unless-stopped
+    depends_on:
+      - centro_api
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+      BACKEND_URL: http://centro_api:8000
+    networks:
+      - proxy_net
+      - centro_internal
+
+  centro_calendario:
+    build:
+      context: .
+      dockerfile: apps/calendario/Dockerfile
+    image: centro_calendario:latest
+    container_name: centro_calendario
+    hostname: centro_calendario
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+    networks:
+      - proxy_net
+
+  # ── Infra compartida (NO va a Caddy; solo red interna) ────────────────────
+  # Misma DB + misma API para biblioteca y votación (tablas profesores/votos
+  # viven en el mismo Postgres que la biblioteca).
+
+  centro_db:
     image: pgvector/pgvector:pg16
-    container_name: centro_estudiantes_db
-    hostname: centro_estudiantes_db
+    container_name: centro_db
+    hostname: centro_db
     restart: unless-stopped
     entrypoint: ["/bin/bash", "/usr/local/bin/docker-entrypoint-wrapper.sh"]
     command: ["postgres"]
@@ -31,7 +117,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Definí POSTGRES_PASSWORD en .env}
       POSTGRES_DB: ${POSTGRES_DB:-centro}
     volumes:
-      - centro_estudiantes_pgdata:/var/lib/postgresql/data
+      - centro_pgdata:/var/lib/postgresql/data
       - ./docker/db/docker-entrypoint-wrapper.sh:/usr/local/bin/docker-entrypoint-wrapper.sh:ro
       - ./docker/db/sync-password.sh:/usr/local/bin/sync-password.sh:ro
     networks:
@@ -47,16 +133,16 @@ services:
       retries: 15
       start_period: 30s
 
-  centro_estudiantes_api:
+  centro_api:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: centro_estudiantes_api:latest
-    container_name: centro_estudiantes_api
-    hostname: centro_estudiantes_api
+    image: centro_api:latest
+    container_name: centro_api
+    hostname: centro_api
     restart: unless-stopped
     depends_on:
-      centro_estudiantes_db:
+      centro_db:
         condition: service_healthy
     env_file:
       - .env
@@ -66,7 +152,7 @@ services:
       APP_HOST: 0.0.0.0
       APP_PORT: "8000"
 
-      POSTGRES_HOST: centro_estudiantes_db
+      POSTGRES_HOST: centro_db
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Definí POSTGRES_PASSWORD en .env}
       POSTGRES_DB: ${POSTGRES_DB:-centro}
@@ -118,74 +204,9 @@ services:
       UPLOAD_MAX_BYTES: ${UPLOAD_MAX_BYTES:-52428800}
       COPYRIGHT_ENFORCEMENT_ENABLED: ${COPYRIGHT_ENFORCEMENT_ENABLED:-false}
     volumes:
-      - centro_estudiantes_storage:/app/var/storage
+      - centro_storage:/app/var/storage
     networks:
       - centro_internal
-    # Sin `ports:` — solo red interna Docker
-
-  centro_estudiantes_biblioteca_web:
-    build:
-      context: .
-      dockerfile: apps/biblioteca/Dockerfile
-      args:
-        NEXT_PUBLIC_BIBLIOTECA_ONLY: "true"
-        NEXT_PUBLIC_COPYRIGHT_ENABLED: ${NEXT_PUBLIC_COPYRIGHT_ENABLED:-false}
-    image: centro_estudiantes_biblioteca_web:latest
-    container_name: centro_estudiantes_biblioteca_web
-    hostname: centro_estudiantes_biblioteca_web
-    restart: unless-stopped
-    depends_on:
-      - centro_estudiantes_api
-    env_file:
-      - .env
-    environment:
-      NODE_ENV: production
-      PORT: "3000"
-      HOSTNAME: 0.0.0.0
-      BACKEND_URL: http://centro_estudiantes_api:8000
-      COPYRIGHT_ENABLED: ${COPYRIGHT_ENABLED:-false}
-    networks:
-      - centro_internal
-      - proxy_net
-    # Caddy: reverse_proxy centro_estudiantes_biblioteca_web:3000
-
-  centro_estudiantes_calendario_web:
-    build:
-      context: .
-      dockerfile: apps/calendario/Dockerfile
-    image: centro_estudiantes_calendario_web:latest
-    container_name: centro_estudiantes_calendario_web
-    hostname: centro_estudiantes_calendario_web
-    restart: unless-stopped
-    environment:
-      NODE_ENV: production
-      PORT: "3000"
-      HOSTNAME: 0.0.0.0
-    networks:
-      - proxy_net
-    # Caddy: reverse_proxy centro_estudiantes_calendario_web:3000
-
-  centro_estudiantes_votacion_web:
-    build:
-      context: .
-      dockerfile: apps/votacion/Dockerfile
-    image: centro_estudiantes_votacion_web:latest
-    container_name: centro_estudiantes_votacion_web
-    hostname: centro_estudiantes_votacion_web
-    restart: unless-stopped
-    depends_on:
-      - centro_estudiantes_api
-    env_file:
-      - .env
-    environment:
-      NODE_ENV: production
-      PORT: "3000"
-      HOSTNAME: 0.0.0.0
-      BACKEND_URL: http://centro_estudiantes_api:8000
-    networks:
-      - centro_internal
-      - proxy_net
-    # Caddy: reverse_proxy centro_estudiantes_votacion_web:3000
 
 networks:
   proxy_net:
@@ -194,5 +215,5 @@ networks:
     driver: bridge
 
 volumes:
-  centro_estudiantes_pgdata:
-  centro_estudiantes_storage:
+  centro_pgdata:
+  centro_storage:
