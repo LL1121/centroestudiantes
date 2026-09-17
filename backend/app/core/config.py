@@ -24,6 +24,20 @@ def build_database_url(
     )
 
 
+def normalize_async_database_url(url: str) -> str:
+    """Acepta postgresql://… (o con ?schema=public) y lo deja listo para asyncpg."""
+    cleaned = url.strip()
+    if "?" in cleaned:
+        cleaned = cleaned.split("?", 1)[0]
+    if cleaned.startswith("postgresql+asyncpg://"):
+        return cleaned
+    if cleaned.startswith("postgresql://"):
+        return "postgresql+asyncpg://" + cleaned.removeprefix("postgresql://")
+    if cleaned.startswith("postgres://"):
+        return "postgresql+asyncpg://" + cleaned.removeprefix("postgres://")
+    return cleaned
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -36,7 +50,7 @@ class Settings(BaseSettings):
     app_host: str = "0.0.0.0"
     app_port: int = 8000
 
-    # Conexión explícita (desarrollo local). En Docker preferí POSTGRES_*.
+    # Preferí DATABASE_URL (postgres_core). Si no, POSTGRES_* / localhost.
     database_url: str | None = None
 
     postgres_user: str = "postgres"
@@ -132,7 +146,12 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def resolve_database_url(self) -> Settings:
-        """En Docker (POSTGRES_HOST) arma la URL desde POSTGRES_*."""
+        """Prioridad: DATABASE_URL → POSTGRES_HOST → localhost."""
+        env_url = os.getenv("DATABASE_URL") or self.database_url
+        if env_url:
+            object.__setattr__(self, "database_url", normalize_async_database_url(env_url))
+            return self
+
         host = self.postgres_host or os.getenv("POSTGRES_HOST")
         if host:
             user = os.getenv("POSTGRES_USER", self.postgres_user)
@@ -152,18 +171,17 @@ class Settings(BaseSettings):
             )
             return self
 
-        if not self.database_url:
-            object.__setattr__(
-                self,
-                "database_url",
-                build_database_url(
-                    user=self.postgres_user,
-                    password=self.postgres_password,
-                    host="localhost",
-                    port=self.postgres_port,
-                    database=self.postgres_db,
-                ),
-            )
+        object.__setattr__(
+            self,
+            "database_url",
+            build_database_url(
+                user=self.postgres_user,
+                password=self.postgres_password,
+                host="localhost",
+                port=self.postgres_port,
+                database=self.postgres_db,
+            ),
+        )
         return self
 
     @property
