@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Check, ChevronsUpDown, Search } from 'lucide-react'
 
 import type { Profesor } from '@/lib/types'
@@ -67,57 +68,74 @@ export function ProfessorCombobox({
         <span className={cn('truncate', !selected && 'text-muted-foreground')}>
           {selected?.nombre ?? 'Buscá y elegí un profesor'}
         </span>
-        <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+        <motion.span
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+          className="inline-flex"
+        >
+          <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+        </motion.span>
       </button>
 
-      {open && (
-        <div
-          className="absolute left-0 right-0 z-40 mt-2 overflow-hidden rounded-xl border border-border bg-white shadow-lg"
-          role="listbox"
-          id={listId}
-        >
-          <div className="flex items-center gap-2 border-b border-border px-3 py-2">
-            <Search className="h-4 w-4 text-muted-foreground" aria-hidden />
-            <input
-              autoFocus
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Escribí el nombre…"
-              className="h-9 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            />
-          </div>
-          <ul className="max-h-56 overflow-y-auto py-1">
-            {filtered.length === 0 ? (
-              <li className="px-3 py-3 text-sm text-muted-foreground">Sin coincidencias</li>
-            ) : (
-              filtered.map((profesor) => {
-                const isSelected = profesor.id === value
-                return (
-                  <li key={profesor.id}>
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={isSelected}
-                      className={cn(
-                        'flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-muted',
-                        isSelected && 'bg-primary/5 text-navy',
-                      )}
-                      onClick={() => {
-                        onChange(profesor.id)
-                        setQuery('')
-                        setOpen(false)
-                      }}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ duration: 0.16, ease: 'easeOut' }}
+            className="absolute left-0 right-0 z-40 mt-2 origin-top overflow-hidden rounded-xl border border-border bg-white shadow-lg"
+            role="listbox"
+            id={listId}
+          >
+            <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+              <Search className="h-4 w-4 text-muted-foreground" aria-hidden />
+              <input
+                autoFocus
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Escribí el nombre…"
+                className="h-9 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              />
+            </div>
+            <ul className="max-h-56 overflow-y-auto py-1">
+              {filtered.length === 0 ? (
+                <li className="px-3 py-3 text-sm text-muted-foreground">Sin coincidencias</li>
+              ) : (
+                filtered.map((profesor, index) => {
+                  const isSelected = profesor.id === value
+                  return (
+                    <motion.li
+                      key={profesor.id}
+                      initial={{ opacity: 0, x: -4 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: Math.min(index * 0.012, 0.12) }}
                     >
-                      <span className="flex-1 truncate">{profesor.nombre}</span>
-                      {isSelected && <Check className="h-4 w-4 text-primary" aria-hidden />}
-                    </button>
-                  </li>
-                )
-              })
-            )}
-          </ul>
-        </div>
-      )}
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={isSelected}
+                        className={cn(
+                          'flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-muted',
+                          isSelected && 'bg-primary/5 text-navy',
+                        )}
+                        onClick={() => {
+                          onChange(profesor.id)
+                          setQuery('')
+                          setOpen(false)
+                        }}
+                      >
+                        <span className="flex-1 truncate">{profesor.nombre}</span>
+                        {isSelected && <Check className="h-4 w-4 text-primary" aria-hidden />}
+                      </button>
+                    </motion.li>
+                  )
+                })
+              )}
+            </ul>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {error && <p className="mt-1.5 text-xs text-destructive">{error}</p>}
     </div>

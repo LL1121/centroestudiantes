@@ -1,8 +1,21 @@
 from __future__ import annotations
 
+import re
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+_WHITESPACE_RE = re.compile(r"\s+")
+
+
+def normalize_nombre_apellido(value: str) -> str:
+    """Colapsa espacios y deja el texto listo para guardar/comparar."""
+    return _WHITESPACE_RE.sub(" ", value.strip())
+
+
+def nombre_apellido_key(value: str) -> str:
+    """Clave case-insensitive para detectar votos duplicados por nombre."""
+    return normalize_nombre_apellido(value).lower()
 
 
 class ProfesorRead(BaseModel):
@@ -18,9 +31,17 @@ class VoteCreate(BaseModel):
     carrera: str = Field(min_length=2, max_length=120)
     dni: str = Field(min_length=7, max_length=8)
 
-    @field_validator("nombre_apellido", "carrera")
+    @field_validator("nombre_apellido")
     @classmethod
-    def strip_text(cls, value: str) -> str:
+    def normalize_nombre(cls, value: str) -> str:
+        cleaned = normalize_nombre_apellido(value)
+        if len(cleaned) < 2:
+            raise ValueError("Debe tener al menos 2 caracteres")
+        return cleaned
+
+    @field_validator("carrera")
+    @classmethod
+    def strip_carrera(cls, value: str) -> str:
         cleaned = value.strip()
         if len(cleaned) < 2:
             raise ValueError("Debe tener al menos 2 caracteres")

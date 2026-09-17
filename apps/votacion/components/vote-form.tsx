@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, type FormEvent } from 'react'
+import { motion } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
 
 import { ProfessorCombobox } from '@/components/professor-combobox'
@@ -14,6 +15,11 @@ interface Props {
 
 function isValidDni(value: string): boolean {
   return /^\d{7,8}$/.test(value.trim())
+}
+
+const fieldVariants = {
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0 },
 }
 
 export function VoteForm({ professors, onVoted }: Props) {
@@ -55,7 +61,9 @@ export function VoteForm({ professors, onVoted }: Props) {
 
       if (res.status === 409) {
         const body = (await res.json().catch(() => null)) as { detail?: string } | null
-        setFormError(body?.detail ?? 'Este DNI ya emitió un voto')
+        setFormError(
+          body?.detail ?? 'Ya registramos un voto con estos datos (DNI o nombre).',
+        )
         return
       }
 
@@ -74,73 +82,92 @@ export function VoteForm({ professors, onVoted }: Props) {
   }
 
   return (
-    <form
+    <motion.form
       onSubmit={onSubmit}
+      initial="hidden"
+      animate="show"
+      variants={{
+        hidden: { opacity: 0 },
+        show: {
+          opacity: 1,
+          transition: { staggerChildren: 0.07, delayChildren: 0.05 },
+        },
+      }}
       className="space-y-3.5 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5"
     >
-      <div>
+      <motion.div variants={fieldVariants}>
         <h2 className="font-serif text-lg font-bold text-navy">Emití tu voto</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Un solo voto por DNI. Elegí al docente y completá tus datos.
+          Un solo voto por persona (mismo DNI o mismo nombre). Elegí al docente y completá
+          tus datos.
         </p>
-      </div>
+      </motion.div>
 
-      <ProfessorCombobox
-        professors={professors}
-        value={profesorId}
-        onChange={setProfesorId}
-        disabled={submitting}
-        error={fieldErrors.profesor}
-      />
-
-      <Field
-        label="Nombre y apellido"
-        error={fieldErrors.nombre}
-      >
-        <input
-          value={nombreApellido}
-          onChange={(e) => setNombreApellido(e.target.value)}
+      <motion.div variants={fieldVariants}>
+        <ProfessorCombobox
+          professors={professors}
+          value={profesorId}
+          onChange={setProfesorId}
           disabled={submitting}
-          autoComplete="name"
-          className={inputClass(fieldErrors.nombre)}
-          placeholder="Ej: Ana Pérez"
+          error={fieldErrors.profesor}
         />
-      </Field>
+      </motion.div>
 
-      <Field label="Carrera" error={fieldErrors.carrera}>
-        <input
-          value={carrera}
-          onChange={(e) => setCarrera(e.target.value)}
-          disabled={submitting}
-          className={inputClass(fieldErrors.carrera)}
-          placeholder="Ej: Tecnicatura en …"
-        />
-      </Field>
+      <motion.div variants={fieldVariants}>
+        <Field label="Nombre y apellido" error={fieldErrors.nombre}>
+          <input
+            value={nombreApellido}
+            onChange={(e) => setNombreApellido(e.target.value)}
+            disabled={submitting}
+            autoComplete="name"
+            className={inputClass(fieldErrors.nombre)}
+            placeholder="Ej: Ana Pérez"
+          />
+        </Field>
+      </motion.div>
 
-      <Field label="DNI" error={fieldErrors.dni}>
-        <input
-          value={dni}
-          onChange={(e) => setDni(e.target.value.replace(/\D/g, '').slice(0, 8))}
-          disabled={submitting}
-          inputMode="numeric"
-          autoComplete="off"
-          className={inputClass(fieldErrors.dni)}
-          placeholder="7 u 8 dígitos"
-        />
-      </Field>
+      <motion.div variants={fieldVariants}>
+        <Field label="Carrera" error={fieldErrors.carrera}>
+          <input
+            value={carrera}
+            onChange={(e) => setCarrera(e.target.value)}
+            disabled={submitting}
+            className={inputClass(fieldErrors.carrera)}
+            placeholder="Ej: Tecnicatura en …"
+          />
+        </Field>
+      </motion.div>
+
+      <motion.div variants={fieldVariants}>
+        <Field label="DNI" error={fieldErrors.dni}>
+          <input
+            value={dni}
+            onChange={(e) => setDni(e.target.value.replace(/\D/g, '').slice(0, 8))}
+            disabled={submitting}
+            inputMode="numeric"
+            autoComplete="off"
+            className={inputClass(fieldErrors.dni)}
+            placeholder="7 u 8 dígitos"
+          />
+        </Field>
+      </motion.div>
 
       {formError && (
-        <p
+        <motion.p
           role="alert"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
           className="rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
         >
           {formError}
-        </p>
+        </motion.p>
       )}
 
-      <button
+      <motion.button
         type="submit"
         disabled={submitting}
+        variants={fieldVariants}
+        whileTap={{ scale: submitting ? 1 : 0.98 }}
         className={cn(
           'inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors',
           'hover:bg-primary/90 disabled:opacity-60',
@@ -154,8 +181,8 @@ export function VoteForm({ professors, onVoted }: Props) {
         ) : (
           'Confirmar voto'
         )}
-      </button>
-    </form>
+      </motion.button>
+    </motion.form>
   )
 }
 
