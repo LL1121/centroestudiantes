@@ -10,7 +10,7 @@ from app.db.base import Base, TimestampMixin, UUIDMixin
 
 
 class Voto(Base, UUIDMixin, TimestampMixin):
-    """Un voto por DNI (restricción UNIQUE) hacia un profesor."""
+    """Un voto por estudiante: UNIQUE(dni) + UNIQUE(nombre normalizado)."""
 
     __tablename__ = "votos"
 

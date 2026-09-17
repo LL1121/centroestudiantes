@@ -12,9 +12,15 @@ from app.schemas.voting import (
     ProfesorRead,
     VoteCreate,
     VoteCreateResponse,
+    nombre_apellido_key,
 )
 
 router = APIRouter(prefix="/voting", tags=["voting"])
+
+# Misma expresión que el índice único uq_votos_nombre_norm (migración 0011).
+_NOMBRE_NORM = func.lower(
+    func.regexp_replace(func.btrim(Voto.nombre_apellido), r"\s+", " ", "g")
+)
 
 
 @router.get("/professors", response_model=list[ProfesorRead])
@@ -34,10 +40,30 @@ async def list_professors(session: SessionDep) -> list[Profesor]:
     status_code=status.HTTP_201_CREATED,
 )
 async def cast_vote(payload: VoteCreate, session: SessionDep) -> VoteCreateResponse:
-    """Registra un voto. Un DNI solo puede votar una vez (409 si ya votó)."""
+    """Registra un voto. Un DNI o nombre solo puede votar una vez (409)."""
     profesor = await session.get(Profesor, payload.profesor_id)
     if profesor is None or not profesor.activo:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Profesor no encontrado")
+
+    nombre_key = nombre_apellido_key(payload.nombre_apellido)
+
+    existing_dni = await session.scalar(
+        select(Voto.id).where(Voto.dni == payload.dni).limit(1)
+    )
+    if existing_dni is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Este DNI ya emitió un voto",
+        )
+
+    existing_nombre = await session.scalar(
+        select(Voto.id).where(_NOMBRE_NORM == nombre_key).limit(1)
+    )
+    if existing_nombre is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Este nombre ya emitió un voto",
+        )
 
     voto = Voto(
         profesor_id=profesor.id,
@@ -48,12 +74,14 @@ async def cast_vote(payload: VoteCreate, session: SessionDep) -> VoteCreateRespo
     session.add(voto)
     try:
         await session.commit()
-    except IntegrityError:
+    except IntegrityError as exc:
         await session.rollback()
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            "Este DNI ya emitió un voto",
-        ) from None
+        detail = str(getattr(exc, "orig", exc)).lower()
+        if "uq_votos_nombre_norm" in detail or "nombre" in detail:
+            message = "Este nombre ya emitió un voto"
+        else:
+            message = "Este DNI ya emitió un voto"
+        raise HTTPException(status.HTTP_409_CONFLICT, message) from None
 
     return VoteCreateResponse()
 
